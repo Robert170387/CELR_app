@@ -1,0 +1,42 @@
+# Archivos de entorno PHP / Web
+.env
+.env.local
+.env.*.local
+
+# Logs y cachés locales de XAMPP / PHP
+/logs/*
+!/logs/.gitkeep
+/cache/*
+!/cache/.gitkeep
+
+# Ignorar el contenido de subidas pero mantener la estructura de directorios
+/uploads/avatars/*
+/uploads/backups/*
+/uploads/logo/*
+/uploads/manifests/*
+/uploads/proofs/*
+/uploads/receipts/*
+!/uploads/avatars/.gitkeep
+!/uploads/backups/.gitkeep
+!/uploads/logo/.gitkeep
+!/uploads/manifests/.gitkeep
+!/uploads/proofs/.gitkeep
+!/uploads/receipts/.gitkeep
+
+# Configuración de IDE / Editor
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Archivos del sistema operativo
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Archivos temporales de la aplicación
+.gemini/
+-p/

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Alpine Collapse</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .menu-button {
+            width: 100%;
+            padding: 12px;
+            background: #1e293b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .menu-button:hover {
+            background: #334155;
+        }
+
+        .submenu {
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .submenu-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .arrow {
+            transition: transform 0.2s;
+        }
+
+        .arrow.rotate {
+            transform: rotate(90deg);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Test Alpine.js Collapse Plugin</h1>
+    <p>Si el menú se despliega al hacer clic, Alpine.js está funcionando correctamente.</p>
+
+    <!-- Test Menu 1 -->
+    <div x-data="{ open: false }">
+        <button @click="open = !open" class="menu-button">
+            <span>📦 Gestión Operativa</span>
+            <span class="arrow" :class="{ 'rotate': open }">▶</span>
+        </button>
+        <div x-show="open" x-collapse class="submenu">
+            <div class="submenu-item">✓ Registro de Viajes</div>
+            <div class="submenu-item">✓ Anticipos</div>
+            <div class="submenu-item">✓ Combustible</div>
+            <div class="submenu-item">✓ Gastos de Viaje</div>
+        </div>
+    </div>
+
+    <!-- Test Menu 2 -->
+    <div x-data="{ open: false }">
+        <button @click="open = !open" class="menu-button">
+            <span>⚙️ Configuración</span>
+            <span class="arrow" :class="{ 'rotate': open }">▶</span>
+        </button>
+        <div x-show="open" x-collapse class="submenu">
+            <div class="submenu-item">✓ General</div>
+            <div class="submenu-item">✓ Clientes</div>
+            <div class="submenu-item">✓ Proveedores</div>
+            <div class="submenu-item">✓ Vehículos</div>
+        </div>
+    </div>
+
+    <hr style="margin: 30px 0;">
+    <div id="alpine-status"></div>
+
+    <script>
+        // Verificar que Alpine.js está cargado
+        document.addEventListener('alpine:init', () => {
+            document.getElementById('alpine-status').innerHTML = '<p style="color: green; font-weight: bold;">✅ Alpine.js inicializado correctamente</p>';
+        });
+
+        // Verificar después de 2 segundos si Alpine no se cargó
+        setTimeout(() => {
+            if (!document.getElementById('alpine-status').innerHTML) {
+                document.getElementById('alpine-status').innerHTML = '<p style="color: red; font-weight: bold;">❌ Alpine.js NO se cargó correctamente</p>';
+            }
+        }, 2000);
+    </script>
+</body>
+
+</html>

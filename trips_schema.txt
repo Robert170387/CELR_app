@@ -1,0 +1,523 @@
+Array
+(
+    [0] => Array
+        (
+            [Field] => id
+            [Type] => int(11)
+            [Null] => NO
+            [Key] => PRI
+            [Default] => 
+            [Extra] => auto_increment
+        )
+
+    [1] => Array
+        (
+            [Field] => trip_type
+            [Type] => enum('urbano','nacional','internacional')
+            [Null] => NO
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [2] => Array
+        (
+            [Field] => vehicle_id
+            [Type] => int(11)
+            [Null] => NO
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [3] => Array
+        (
+            [Field] => client_id
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [4] => Array
+        (
+            [Field] => driver_id
+            [Type] => int(11)
+            [Null] => NO
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [5] => Array
+        (
+            [Field] => material_id
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [6] => Array
+        (
+            [Field] => origin
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [7] => Array
+        (
+            [Field] => destination
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [8] => Array
+        (
+            [Field] => date_load
+            [Type] => date
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [9] => Array
+        (
+            [Field] => date_unload
+            [Type] => date
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [10] => Array
+        (
+            [Field] => kms_start
+            [Type] => decimal(10,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [11] => Array
+        (
+            [Field] => kms_end
+            [Type] => decimal(10,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [12] => Array
+        (
+            [Field] => kms_total
+            [Type] => decimal(10,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [13] => Array
+        (
+            [Field] => manifest_company
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [14] => Array
+        (
+            [Field] => manifest_company_id
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [15] => Array
+        (
+            [Field] => manifest_number
+            [Type] => varchar(100)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [16] => Array
+        (
+            [Field] => manifest_date
+            [Type] => date
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [17] => Array
+        (
+            [Field] => weight_declared
+            [Type] => decimal(10,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [18] => Array
+        (
+            [Field] => weight_origin
+            [Type] => decimal(10,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [19] => Array
+        (
+            [Field] => weight_dest
+            [Type] => decimal(10,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [20] => Array
+        (
+            [Field] => flete_bruto
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [21] => Array
+        (
+            [Field] => percent_rete_fuente
+            [Type] => decimal(5,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [22] => Array
+        (
+            [Field] => value_rete_fuente
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [23] => Array
+        (
+            [Field] => percent_rete_ica
+            [Type] => decimal(5,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [24] => Array
+        (
+            [Field] => percent_iva
+            [Type] => decimal(5,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [25] => Array
+        (
+            [Field] => percent_rete_iva
+            [Type] => decimal(5,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [26] => Array
+        (
+            [Field] => value_rete_ica
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [27] => Array
+        (
+            [Field] => value_iva
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [28] => Array
+        (
+            [Field] => value_rete_iva
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [29] => Array
+        (
+            [Field] => percent_deductible_3
+            [Type] => decimal(5,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [30] => Array
+        (
+            [Field] => value_deductible_3
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [31] => Array
+        (
+            [Field] => value_deductible_4
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [32] => Array
+        (
+            [Field] => value_deductible_5
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [33] => Array
+        (
+            [Field] => value_deductible_6
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [34] => Array
+        (
+            [Field] => total_deductibles
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [35] => Array
+        (
+            [Field] => flete_neto
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [36] => Array
+        (
+            [Field] => advance_owner
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [37] => Array
+        (
+            [Field] => advance_owner_responsible
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [38] => Array
+        (
+            [Field] => advance_manifest
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [39] => Array
+        (
+            [Field] => advance_manifest_to_driver
+            [Type] => tinyint(1)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0
+            [Extra] => 
+        )
+
+    [40] => Array
+        (
+            [Field] => commission_percent
+            [Type] => decimal(5,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [41] => Array
+        (
+            [Field] => commission_value
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [42] => Array
+        (
+            [Field] => final_pay_expected
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [43] => Array
+        (
+            [Field] => final_pay_received
+            [Type] => decimal(15,2)
+            [Null] => YES
+            [Key] => 
+            [Default] => 0.00
+            [Extra] => 
+        )
+
+    [44] => Array
+        (
+            [Field] => settlement_status
+            [Type] => enum('Pending','Settled')
+            [Null] => YES
+            [Key] => MUL
+            [Default] => Pending
+            [Extra] => 
+        )
+
+    [45] => Array
+        (
+            [Field] => settlement_notes
+            [Type] => text
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [46] => Array
+        (
+            [Field] => created_at
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => 
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [47] => Array
+        (
+            [Field] => updated_at
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => 
+            [Default] => current_timestamp()
+            [Extra] => on update current_timestamp()
+        )
+
+    [48] => Array
+        (
+            [Field] => created_by
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [49] => Array
+        (
+            [Field] => status
+            [Type] => enum('En Progreso','Finalizado','Cancelado')
+            [Null] => YES
+            [Key] => MUL
+            [Default] => En Progreso
+            [Extra] => 
+        )
+
+    [50] => Array
+        (
+            [Field] => delivery_proof_url
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [51] => Array
+        (
+            [Field] => manifest_file
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+)

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico CELR - Sidebar y Mapa</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #1e293b;
+            margin-bottom: 20px;
+        }
+
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-section h2 {
+            color: #334155;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .status.ok {
+            background: #10b981;
+            color: white;
+        }
+
+        .status.error {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status.warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .log {
+            background: #1e293b;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-error {
+            color: #ef4444;
+        }
+
+        .log-warning {
+            color: #f59e0b;
+        }
+
+        .log-info {
+            color: #3b82f6;
+        }
+
+        /* Sidebar Test */
+        .sidebar-test {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 8px;
+            color: white;
+        }
+
+        .menu-item {
+            background: #1e293b;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #334155;
+        }
+
+        .submenu {
+            background: #334155;
+            margin-top: 8px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .submenu.show {
+            display: block;
+        }
+
+        .submenu-item {
+            padding: 8px;
+            margin: 4px 0;
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        /* Map Test */
+        #test-map {
+            width: 100%;
+            height: 400px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        button.danger {
+            background: #ef4444;
+        }
+
+        button.danger:hover {
+            background: #dc2626;
+        }
+    </style>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔧 Diagnóstico CELR - Sidebar y Mapa</h1>
+
+        <!-- Test 1: Script Loading -->
+        <div class="test-section">
+            <h2>1. Verificación de Carga de Scripts</h2>
+            <div id="script-status"></div>
+            <div class="log" id="script-log"></div>
+        </div>
+
+        <!-- Test 2: Alpine.js Sidebar -->
+        <div class="test-section">
+            <h2>2. Test de Sidebar con Alpine.js</h2>
+            <div id="alpine-status"></div>
+            <div class="sidebar-test" x-data="{ menu1: false, menu2: false }">
+                <div>
+                    <div class="menu-item" @click="menu1 = !menu1">
+                        <span>📦 Gestión Operativa</span>
+                        <span x-text="menu1 ? '▼' : '▶'">▶</span>
+                    </div>
+                    <div class="submenu" x-show="menu1" x-collapse>
+                        <div class="submenu-item">✓ Registro de Viajes</div>
+                        <div class="submenu-item">✓ Anticipos</div>
+                        <div class="submenu-item">✓ Combustible</div>
+                        <div class="submenu-item">✓ Gastos de Viaje</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="menu-item" @click="menu2 = !menu2">
+                        <span>⚙️ Configuración</span>
+                        <span x-text="menu2 ? '▼' : '▶'">▶</span>
+                    </div>
+                    <div class="submenu" x-show="menu2" x-collapse>
+                        <div class="submenu-item">✓ General</div>
+                        <div class="submenu-item">✓ Clientes</div>
+                        <div class="submenu-item">✓ Proveedores</div>
+                    </div>
+                </div>
+            </div>
+            <div class="log" id="alpine-log"></div>
+        </div>
+
+        <!-- Test 3: Leaflet Map -->
+        <div class="test-section">
+            <h2>3. Test de Mapa Leaflet</h2>
+            <div id="map-status"></div>
+            <div id="test-map"></div>
+            <div style="margin-top: 10px;">
+                <button onclick="testMapInit()">🔄 Reinicializar Mapa</button>
+                <button onclick="testMapMarkers()">📍 Agregar Marcadores</button>
+            </div>
+            <div class="log" id="map-log"></div>
+        </div>
+
+        <!-- Test 4: API Connection -->
+        <div class="test-section">
+            <h2>4. Test de Conexión API</h2>
+            <div id="api-status"></div>
+            <button onclick="testAPI()">🔌 Probar API</button>
+            <div class="log" id="api-log"></div>
+        </div>
+
+        <!-- Actions -->
+        <div class="test-section">
+            <h2>Acciones</h2>
+            <button onclick="location.href='index.php'">🏠 Ir al Dashboard</button>
+            <button onclick="location.reload()" class="danger">🔄 Recargar Página</button>
+            <button onclick="clearAllLogs()">🗑️ Limpiar Logs</button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Alpine.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <script>
+        // Logging utilities
+        function log(elementId, message, type = 'info') {
+            const el = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'log-error' : type === 'warning' ? 'log-warning' : 'log-info';
+            el.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function setStatus(elementId, message, status) {
+            const statusClass = status === 'ok' ? 'ok' : status === 'error' ? 'error' : 'warning';
+            document.getElementById(elementId).innerHTML =
+                `<span class="status ${statusClass}">${status.toUpperCase()}</span> ${message}`;
+        }
+
+        function clearAllLogs() {
+            ['script-log', 'alpine-log', 'map-log', 'api-log'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+        }
+
+        // Test 1: Script Loading
+        function testScripts() {
+            log('script-log', 'Iniciando verificación de scripts...', 'info');
+
+            // Check Leaflet
+            if (typeof L !== 'undefined') {
+                log('script-log', '✓ Leaflet cargado correctamente (versión: ' + L.version + ')', 'info');
+                setStatus('script-status', 'Leaflet cargado', 'ok');
+            } else {
+                log('script-log', '✗ Leaflet NO está cargado', 'error');
+                setStatus('script-status', 'Leaflet NO cargado', 'error');
+            }
+
+            // Check Alpine
+            setTimeout(() => {
+                if (typeof Alpine !== 'undefined') {
+                    log('script-log', '✓ Alpine.js cargado correctamente (versión: ' + Alpine.version + ')', 'info');
+                } else {
+                    log('script-log', '✗ Alpine.js NO está cargado', 'error');
+                }
+            }, 500);
+        }
+
+        // Test 2: Alpine.js
+        document.addEventListener('alpine:init', () => {
+            log('alpine-log', '✓ Alpine.js inicializado correctamente', 'info');
+            setStatus('alpine-status', 'Alpine.js funcionando', 'ok');
+
+            // Check if collapse plugin is available
+            if (typeof AlpineCollapse !== 'undefined' || Alpine.directive('collapse')) {
+                log('alpine-log', '✓ Plugin Collapse detectado', 'info');
+            } else {
+                log('alpine-log', '⚠ Plugin Collapse podría no estar disponible', 'warning');
+            }
+        });
+
+        // Test 3: Leaflet Map
+        let testMap = null;
+
+        function testMapInit() {
+            log('map-log', 'Intentando inicializar mapa...', 'info');
+
+            try {
+                // Remove existing map if any
+                if (testMap) {
+                    testMap.remove();
+                    log('map-log', 'Mapa anterior removido', 'info');
+                }
+
+                // Create new map
+                testMap = L.map('test-map').setView([4.7110, -74.0721], 11);
+                log('map-log', '✓ Objeto de mapa creado', 'info');
+
+                // Add tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(testMap);
+
+                log('map-log', '✓ Capa de tiles agregada', 'info');
+                log('map-log', '✓ Mapa inicializado exitosamente en Bogotá', 'info');
+                setStatus('map-status', 'Mapa funcionando correctamente', 'ok');
+
+                // Force map to resize
+                setTimeout(() => {
+                    testMap.invalidateSize();
+                    log('map-log', 'Tamaño de mapa ajustado', 'info');
+                }, 100);
+
+            } catch (error) {
+                log('map-log', '✗ Error al crear mapa: ' + error.message, 'error');
+                setStatus('map-status', 'Error al crear mapa', 'error');
+                console.error(error);
+            }
+        }
+
+        function testMapMarkers() {
+            if (!testMap) {
+                log('map-log', '⚠ Primero debes inicializar el mapa', 'warning');
+                return;
+            }
+
+            log('map-log', 'Agregando marcadores de prueba...', 'info');
+
+            // Add test markers
+            const markers = [
+                { lat: 4.7110, lng: -74.0721, name: 'Bogotá Centro' },
+                { lat: 4.6097, lng: -74.0817, name: 'Aeropuerto El Dorado' },
+                { lat: 4.7587, lng: -74.0313, name: 'Usaquén' }
+            ];
+
+            markers.forEach(m => {
+                L.marker([m.lat, m.lng])
+                    .addTo(testMap)
+                    .bindPopup(`<b>${m.name}</b>`);
+                log('map-log', `✓ Marcador agregado: ${m.name}`, 'info');
+            });
+        }
+
+        // Test 4: API Connection
+        async function testAPI() {
+            log('api-log', 'Probando conexión con API...', 'info');
+            setStatus('api-status', 'Probando...', 'warning');
+
+            try {
+                const response = await fetch('api.php?action=fetchSatrackLocations');
+                log('api-log', `Respuesta recibida: ${response.status} ${response.statusText}`, 'info');
+
+                const data = await response.json();
+                log('api-log', 'Datos JSON parseados correctamente', 'info');
+                log('api-log', JSON.stringify(data, null, 2), 'info');
+
+                if (data.success) {
+                    log('api-log', `✓ API funcionando. Ubicaciones: ${data.locations?.length || 0}`, 'info');
+                    setStatus('api-status', 'API funcionando', 'ok');
+                } else {
+                    log('api-log', '⚠ API respondió pero sin éxito', 'warning');
+                    setStatus('api-status', 'API con advertencias', 'warning');
+                }
+            } catch (error) {
+                log('api-log', '✗ Error al conectar con API: ' + error.message, 'error');
+                setStatus('api-status', 'Error de conexión', 'error');
+            }
+        }
+
+        // Run tests on load
+        window.addEventListener('load', () => {
+            testScripts();
+            testMapInit();
+
+            // Auto-test Alpine after 1 second
+            setTimeout(() => {
+                if (typeof Alpine === 'undefined') {
+                    log('alpine-log', '✗ Alpine.js NO se cargó después de 1 segundo', 'error');
+                    setStatus('alpine-status', 'Alpine.js NO cargado', 'error');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>

@@ -39,7 +39,7 @@ function setSecurityHeaders() {
     header('Referrer-Policy: strict-origin-when-cross-origin');
     
     // Content Security Policy (adjust as needed)
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' cdn.tailwindcss.com cdn.jsdelivr.net unpkg.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com unpkg.com; font-src 'self' fonts.gstatic.com; img-src 'self' data:; connect-src 'self';");
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.tailwindcss.com cdn.jsdelivr.net unpkg.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com unpkg.com; font-src 'self' fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' cdn.jsdelivr.net unpkg.com;");
 }
 
 // Call security headers on every request

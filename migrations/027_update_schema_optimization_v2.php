@@ -4,20 +4,21 @@ require_once 'includes/db.php';
 try {
     echo "Starting advanced index optimization...<br>";
 
-    // Additional indexes for 'trips' table
-    $pdo->exec("CREATE INDEX idx_trips_client ON trips(client_id)");
-    $pdo->exec("CREATE INDEX idx_trips_settlement ON trips(settlement_status)");
-    $pdo->exec("CREATE INDEX idx_trips_report_monthly ON trips(date_load, status)");
-    echo "Advanced indexes added to 'trips' table.<br>";
-
-    // Index for 'expenses' table paid_by
-    $pdo->exec("CREATE INDEX idx_expenses_paid_by ON expenses(paid_by)");
-    echo "Index added to 'expenses' table.<br>";
-
-    // Indexes for personnel and clients active status
-    $pdo->exec("CREATE INDEX idx_personnel_active ON personnel(active, type)");
-    $pdo->exec("CREATE INDEX idx_clients_active ON clients(active)");
-    echo "Status indexes added to personnel and clients.<br>";
+    $indexes = [
+        'trips'     => ['idx_trips_client' => 'client_id', 'idx_trips_settlement' => 'settlement_status', 'idx_trips_report_monthly' => 'date_load, status'],
+        'expenses'  => ['idx_expenses_paid_by' => 'paid_by'],
+        'personnel' => ['idx_personnel_active' => 'active, type'],
+        'clients'   => ['idx_clients_active' => 'active'],
+    ];
+    foreach ($indexes as $table => $idxList) {
+        $existing = $pdo->query("SHOW INDEX FROM $table")->fetchAll(PDO::FETCH_COLUMN, 2);
+        foreach ($idxList as $name => $cols) {
+            if (!in_array($name, $existing)) {
+                $pdo->exec("CREATE INDEX $name ON $table($cols)");
+            }
+        }
+    }
+    echo "Advanced indexes checked/added.<br>";
 
     // Create View for Vehicle Availability
     $pdo->exec("DROP VIEW IF EXISTS view_vehicle_availability");

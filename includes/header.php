@@ -38,6 +38,28 @@ $role = getCurrentRole();
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+    <!-- CELR Notification System -->
+    <script src="js/notifications.js?v=<?php echo time(); ?>"></script>
+
+    <!-- Flash messages desde PHP -->
+    <?php
+    $flash = [];
+    if (!empty($_GET['msg'])) {
+        $msgMap = [
+            'success'      => ['type'=>'success', 'title'=>'Guardado',    'text'=>'Operación completada correctamente.'],
+            'saved'        => ['type'=>'success', 'title'=>'Guardado',    'text'=>'Registro guardado correctamente.'],
+            'deleted'      => ['type'=>'warning', 'title'=>'Eliminado',   'text'=>'El registro fue desactivado.'],
+            'legalizado'   => ['type'=>'success', 'title'=>'Legalizado',  'text'=>'Movimiento legalizado correctamente.'],
+            'cruzado'      => ['type'=>'success', 'title'=>'Cruzado',     'text'=>'Movimiento cruzado correctamente.'],
+            'ya_legalizado'=> ['type'=>'info',    'title'=>'Sin cambios', 'text'=>'Este movimiento ya estaba legalizado.'],
+            'error'        => ['type'=>'error',   'title'=>'Error',       'text'=>'Ocurrió un error. Intente nuevamente.'],
+        ];
+        $key = $_GET['msg'];
+        if (isset($msgMap[$key])) $flash[] = $msgMap[$key];
+    }
+    ?>
+    <div id="flash-messages" data-messages="<?php echo htmlspecialchars(json_encode($flash)); ?>" style="display:none"></div>
+
     <!-- Leaflet & OSM -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />

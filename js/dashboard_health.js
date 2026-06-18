@@ -95,35 +95,59 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error fetching alerts:', error));
     };
 
+    const confirmDialog = (message, onConfirm) => {
+        const existing = document.getElementById('celr-confirm-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'celr-confirm-modal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);';
+        modal.innerHTML = `
+            <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:2rem;max-width:380px;width:90%;box-shadow:0 25px 60px rgba(0,0,0,0.5);text-align:center;">
+                <div style="font-size:2.5rem;margin-bottom:1rem;">🗄️</div>
+                <h3 style="color:#f1f5f9;font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">Confirmar Acción</h3>
+                <p style="color:#94a3b8;font-size:0.9rem;margin-bottom:1.5rem;">${message}</p>
+                <div style="display:flex;gap:0.75rem;justify-content:center;">
+                    <button id="celr-confirm-yes" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;padding:0.6rem 1.4rem;border-radius:8px;cursor:pointer;font-weight:700;font-size:0.9rem;">Sí, generar</button>
+                    <button id="celr-confirm-no"  style="background:#334155;color:#cbd5e1;border:none;padding:0.6rem 1.4rem;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.9rem;">Cancelar</button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(modal);
+        document.getElementById('celr-confirm-no').onclick  = () => modal.remove();
+        document.getElementById('celr-confirm-yes').onclick = () => { modal.remove(); onConfirm(); };
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    };
+
     const initBackupButton = () => {
         const btn = document.getElementById('btn-generate-backup');
         if (!btn) return;
 
         btn.addEventListener('click', function () {
-            if (!confirm('¿Está seguro de generar un respaldo de la base de datos ahora?')) return;
+            confirmDialog('¿Está seguro de generar un respaldo de la base de datos ahora?', () => {
+                btn.disabled = true;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<svg class="w-3 h-3 mr-1.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> GENERANDO...';
 
-            btn.disabled = true;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<svg class="w-3 h-3 mr-1.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> GENERANDO...';
-
-            fetch('api.php?action=triggerDatabaseBackup')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Respaldo generado con éxito: ' + data.filename);
-                        window.location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error generating backup:', error);
-                    alert('Error técnico al generar respaldo.');
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                });
+                fetch('api.php?action=triggerDatabaseBackup')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Notify.success('Respaldo generado exitosamente: ' + data.filename);
+                            setTimeout(() => window.location.reload(), 2500);
+                        } else {
+                            Notify.error('Error al generar respaldo: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error generating backup:', error);
+                        Notify.error('Error técnico al generar respaldo.');
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    });
+            });
         });
     };
 

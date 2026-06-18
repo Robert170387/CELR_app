@@ -17,7 +17,7 @@ try {
     echo "Table 'system_alerts' created successfully.<br>";
 
     // Add config for unusual expense threshold if not exists
-    $pdo->exec("ALTER TABLE config ADD COLUMN IF NOT EXISTS unusual_expense_threshold DECIMAL(15,2) DEFAULT 1000000.00");
+    $cols = $pdo->query("SHOW COLUMNS FROM config LIKE 'unusual_expense_threshold'")->fetchAll(); if (!$cols) $pdo->exec("ALTER TABLE config ADD COLUMN unusual_expense_threshold DECIMAL(15,2) DEFAULT 1000000.00");
     echo "Config column 'unusual_expense_threshold' added.<br>";
 
 } catch (PDOException $e) {

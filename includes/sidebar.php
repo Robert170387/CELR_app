@@ -39,6 +39,7 @@ $logoPath = $appConfig['logo_path'] ?? null;
                 'icon' => 'truck',
                 'children' => [
                     ['name' => 'Registro de Viajes', 'url' => 'trips.php'],
+                    ['name' => 'Manifiestos RNDC', 'url' => 'rndc.php'],
                     ['name' => 'Anticipos', 'url' => 'trip_advances.php'],
                     ['name' => 'Combustible', 'url' => 'fuel_vouchers.php'],
                     ['name' => 'Gastos de Viaje', 'url' => 'expenses.php'],
@@ -48,6 +49,30 @@ $logoPath = $appConfig['logo_path'] ?? null;
                 ]
             ],
             ['name' => 'Mantenimiento', 'url' => 'maintenance_list.php', 'icon' => 'cog-maint'],
+            [
+                'name' => 'Finanzas',
+                'id'   => 'finanzas_menu',
+                'icon' => 'cash',
+                'children' => [
+                    ['name' => 'Flujo de Caja',       'url' => 'flujo_caja.php'],
+                    ['name' => 'KPI / Indicadores',   'url' => 'kpi_reportes.php'],
+                    ['name' => 'Compensado RC',        'url' => 'compensado_rc.php'],
+                    ['name' => 'Flypass TAG',          'url' => 'flypass.php'],
+                    ['name' => 'Tarjeta Débito',       'url' => 'tarjeta.php'],
+                    ['name' => 'Retenciones',          'url' => 'reporte_retenciones.php'],
+                ]
+            ],
+            [
+                'name' => 'Directorio',
+                'id'   => 'directorio_menu',
+                'icon' => 'book',
+                'children' => [
+                    ['name' => 'Talleres',              'url' => 'talleres.php'],
+                    ['name' => 'Proveedores',           'url' => 'suppliers.php'],
+                    ['name' => 'Clientes',              'url' => 'clients.php'],
+                    ['name' => 'Socios / Propietarios', 'url' => 'socios.php'],
+                ]
+            ],
             ['name' => 'Analítica', 'url' => 'financial_report.php', 'icon' => 'chart-bar'],
         ];
 
@@ -81,7 +106,14 @@ $logoPath = $appConfig['logo_path'] ?? null;
                     if (
                         $current_page == $child['url'] ||
                         (str_contains($child['url'], 'trips.php') && (str_contains($current_page, 'trip'))) ||
-                        (str_contains($child['url'], 'expenses.php') && (str_contains($current_page, 'expense')))
+                        (str_contains($child['url'], 'expenses.php') && (str_contains($current_page, 'expense'))) ||
+                        (str_contains($child['url'], 'compensado') && str_contains($current_page, 'compensado')) ||
+                        (str_contains($child['url'], 'flypass') && str_contains($current_page, 'flypass')) ||
+                        (str_contains($child['url'], 'tarjeta') && str_contains($current_page, 'tarjeta')) ||
+                        (str_contains($child['url'], 'taller') && str_contains($current_page, 'taller')) ||
+                        (str_contains($child['url'], 'rndc') && str_contains($current_page, 'rndc')) ||
+                        (str_contains($child['url'], 'socio') && str_contains($current_page, 'socio')) ||
+                        (str_contains($child['url'], 'retenciones') && str_contains($current_page, 'retenciones'))
                     ) {
                         $isChildActive = true;
                         break;
@@ -104,6 +136,18 @@ $logoPath = $appConfig['logo_path'] ?? null;
                                 <svg class="w-5 h-5 mr-3 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4">
+                                    </path>
+                                </svg>
+                            <?php elseif ($item['icon'] == 'cash'): ?>
+                                <svg class="w-5 h-5 mr-3 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+                                    </path>
+                                </svg>
+                            <?php elseif ($item['icon'] == 'book'): ?>
+                                <svg class="w-5 h-5 mr-3 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
                                     </path>
                                 </svg>
                             <?php endif; ?>

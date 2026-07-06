@@ -57,6 +57,10 @@ $role = getCurrentRole();
         $key = $_GET['msg'];
         if (isset($msgMap[$key])) $flash[] = $msgMap[$key];
     }
+    if (!empty($_SESSION['flash_message'])) {
+        $flash[] = $_SESSION['flash_message'];
+        unset($_SESSION['flash_message']);
+    }
     ?>
     <div id="flash-messages" data-messages="<?php echo htmlspecialchars(json_encode($flash)); ?>" style="display:none"></div>
 

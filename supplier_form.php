@@ -1,6 +1,7 @@
 <?php
 include 'includes/db.php';
 include 'includes/header.php';
+$csrf_token = getCsrfToken();
 
 $s = null;
 if (isset($_GET['id'])) {
@@ -25,6 +26,7 @@ $initialType = $s ? $s['person_type'] : 'Natural';
 
         <form action="save_supplier.php" method="POST"
             class="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
+            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
             <?php if ($s): ?><input type="hidden" name="id" value="<?php echo $s['id']; ?>">
             <?php endif; ?>
 
@@ -138,8 +140,8 @@ $initialType = $s ? $s['person_type'] : 'Natural';
                                 <select name="city" x-model="selectedCity" :disabled="!selectedState"
                                     class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
                                     <option value="">-- Seleccione --</option>
-                                    <template x-for="ci in cities" :key="ci">
-                                        <option :value="ci" x-text="ci" :selected="ci == selectedCity"></option>
+                                    <template x-for="ci in cities" :key="ci.id">
+                                        <option :value="ci.name" x-text="ci.name" :selected="ci.name == selectedCity"></option>
                                     </template>
                                 </select>
                                 <p x-show="isLoadingCities" class="text-xs text-brand-500 mt-1">Cargando...</p>

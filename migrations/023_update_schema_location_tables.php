@@ -1,4 +1,5 @@
 <?php
+set_time_limit(0);
 require_once 'includes/db.php';
 
 echo "Creating local location tables...\n";

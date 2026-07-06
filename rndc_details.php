@@ -267,6 +267,22 @@ table.merch td { padding: 7px 8px; border: 1px solid #e5e7eb; font-size: 11px; }
         </div>
         <?php endif; ?>
 
+        <?php if (!empty($m['manifest_file'])): ?>
+        <!-- Documento adjunto -->
+        <div class="section">
+            <div class="section-title">Documento Adjunto</div>
+            <div class="section-body">
+                <a href="<?php echo htmlspecialchars($m['manifest_file']); ?>" target="_blank"
+                   style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#eef2ff;color:#4338ca;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    Ver archivo del manifiesto
+                </a>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Firmas -->
         <div class="section">
             <div class="section-title">Firmas y Declaraciones</div>

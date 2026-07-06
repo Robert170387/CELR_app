@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/security_utils.php';
+requireInternalToolAccess();
+
 /**
  * DB_DIAG - Sistema de Diagnóstico de Salud de Base de Datos CELR-App
  * Verifica la existencia de tablas, columnas críticas y tipos de datos post-migración.

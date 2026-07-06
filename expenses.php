@@ -5,7 +5,7 @@ include 'includes/header.php';
 
 // Fetch filter options
 $vehicles = $pdo->query("SELECT id, placa FROM vehicles WHERE active=1 ORDER BY placa")->fetchAll();
-$categoriesArr = $pdo->query("SELECT DISTINCT slug, name FROM expense_categories ORDER BY name")->fetchAll();
+$categoriesArr = $pdo->query("SELECT id, name FROM expense_categories WHERE active = 1 ORDER BY FIELD(type,'viaje','vehiculo_fijo','administrativo','especial'), sort_order ASC, name ASC")->fetchAll();
 $suppliers = $pdo->query("SELECT id, business_name, firstname, lastname1, person_type FROM suppliers ORDER BY business_name, firstname")->fetchAll();
 
 // Build WHERE clause based on filters
@@ -24,8 +24,12 @@ if (!empty($_GET['vehicle_id'])) {
     $where[] = "e.vehicle_id = ?";
     $params[] = $_GET['vehicle_id'];
 }
-if (!empty($_GET['category'])) {
-    $where[] = "e.category = ?";
+// Support both category_id (new) and category slug (legacy) filters
+if (!empty($_GET['category_id'])) {
+    $where[] = "e.category_id = ?";
+    $params[] = (int)$_GET['category_id'];
+} elseif (!empty($_GET['category'])) {
+    $where[] = "e.category_id = (SELECT id FROM expense_categories WHERE slug = ?)";
     $params[] = $_GET['category'];
 }
 if (!empty($_GET['paid_by'])) {
@@ -39,18 +43,6 @@ if (!empty($_GET['supplier_id'])) {
 
 $whereClause = implode(" AND ", $where);
 
-// Main query
-$sql = "SELECT e.*, v.placa, s.business_name, s.firstname, s.lastname1, s.person_type 
-        FROM expenses e 
-        LEFT JOIN vehicles v ON e.vehicle_id = v.id 
-        LEFT JOIN suppliers s ON e.supplier_id = s.id
-        WHERE $whereClause
-        ORDER BY e.date DESC";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$expenses = $stmt->fetchAll();
-
 // Calculate totals
 $totalsSql = "SELECT COUNT(*) as count, SUM(amount) as total_amount FROM expenses e WHERE $whereClause";
 $totalsStmt = $pdo->prepare($totalsSql);
@@ -59,6 +51,26 @@ $totals = $totalsStmt->fetch();
 
 $total_count = $totals['count'] ?: 0;
 $total_amount = $totals['total_amount'] ?: 0;
+
+// Pagination Configuration
+$limit = 15;
+$totalPages = ceil($total_count / $limit);
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+$offset = ($page - 1) * $limit;
+
+// Main query
+$sql = "SELECT e.*, v.placa, s.business_name, s.firstname, s.lastname1, s.person_type 
+        FROM expenses e 
+        LEFT JOIN vehicles v ON e.vehicle_id = v.id 
+        LEFT JOIN suppliers s ON e.supplier_id = s.id
+        WHERE $whereClause
+        ORDER BY e.date DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$expenses = $stmt->fetchAll();
 
 $hasFilters = !empty($_GET['date_from']) || !empty($_GET['date_to']) || !empty($_GET['vehicle_id']) ||
     !empty($_GET['category']) || !empty($_GET['paid_by']) || !empty($_GET['supplier_id']);
@@ -110,11 +122,11 @@ $hasFilters = !empty($_GET['date_from']) || !empty($_GET['date_to']) || !empty($
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Categoría</label>
-                    <select name="category"
+                    <select name="category_id"
                         class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-xs">
                         <option value="">Todas</option>
                         <?php foreach ($categoriesArr as $cat): ?>
-                            <option value="<?php echo $cat['slug']; ?>" <?php echo ($_GET['category'] ?? '') == $cat['slug'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat['name']); ?></option>
+                            <option value="<?php echo $cat['id']; ?>" <?php echo (($_GET['category_id'] ?? '') == $cat['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat['name']); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -165,7 +177,7 @@ $hasFilters = !empty($_GET['date_from']) || !empty($_GET['date_to']) || !empty($
                                     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-400 sm:pl-6">
                                         <div class="flex flex-col text-left">
                                             <span class="text-xs font-bold text-gray-400 font-mono tracking-tighter mb-0.5"><?php echo date('d M, Y', strtotime($expense['date'])); ?></span>
-                                            <span class="text-sm font-bold text-gray-900 uppercase tracking-tight"><?php echo ucfirst(str_replace('_', ' ', $expense['category'])); ?></span>
+                                            <span class="text-sm font-bold text-gray-900 uppercase tracking-tight"><?php echo htmlspecialchars($expense['category_name'] ?? $expense['category'] ?? ''); ?></span>
                                         </div>
                                     </td>
                                     <td class="px-3 py-4 text-sm text-gray-500">
@@ -200,6 +212,59 @@ $hasFilters = !empty($_GET['date_from']) || !empty($_GET['date_to']) || !empty($
                             <?php endif; ?>
                         </tbody>
                     </table>
+
+                    <?php
+                    $filterParams = $_GET;
+                    unset($filterParams['page']);
+                    $queryString = http_build_query($filterParams);
+                    if (!empty($queryString)) {
+                        $queryString = '&' . $queryString;
+                    }
+                    ?>
+
+                    <!-- Pagination Controls -->
+                    <?php if ($totalPages > 1): ?>
+                        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <?php if ($page > 1): ?>
+                                    <a href="?page=<?php echo $page - 1; ?><?php echo $queryString; ?>" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Anterior</a>
+                                <?php endif; ?>
+                                <?php if ($page < $totalPages): ?>
+                                    <a href="?page=<?php echo $page + 1; ?><?php echo $queryString; ?>" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Siguiente</a>
+                                <?php endif; ?>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        Mostrando <span class="font-medium"><?php echo $offset + 1; ?></span> a <span class="font-medium"><?php echo min($offset + $limit, $total_count); ?></span> de <span class="font-medium"><?php echo $total_count; ?></span> registros
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                        <?php if ($page > 1): ?>
+                                            <a href="?page=<?php echo $page - 1; ?><?php echo $queryString; ?>" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                                <span class="sr-only">Anterior</span>
+                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                            </a>
+                                        <?php endif; ?>
+
+                                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                                            <a href="?page=<?php echo $i; ?><?php echo $queryString; ?>" class="relative inline-flex items-center px-4 py-2 border text-sm font-medium <?php echo $i === $page ? 'z-10 bg-brand-50 border-brand-500 text-brand-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'; ?>">
+                                                <?php echo $i; ?>
+                                            </a>
+                                        <?php endfor; ?>
+
+                                        <?php if ($page < $totalPages): ?>
+                                            <a href="?page=<?php echo $page + 1; ?><?php echo $queryString; ?>" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                                <span class="sr-only">Siguiente</span>
+                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                            </a>
+                                        <?php endif; ?>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

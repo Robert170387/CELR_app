@@ -1,3 +1,7 @@
+<?php
+require_once __DIR__ . '/../includes/security_utils.php';
+requireInternalToolAccess();
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

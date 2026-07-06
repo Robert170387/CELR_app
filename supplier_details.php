@@ -234,7 +234,7 @@ $recentExpenses = $stmt->fetchAll();
                                             </p>
                                             <p class="mt-1 text-xs text-gray-400">
                                                 Categoría:
-                                                <?php echo ucfirst(str_replace('_', ' ', $expense['category'])); ?>
+                                                <?php echo htmlspecialchars($expense['category_name'] ?? $expense['category'] ?? ''); ?>
                                                 <?php if ($expense['placa']): ?>
                                                     | Vehículo:
                                                     <?php echo htmlspecialchars($expense['placa']); ?>

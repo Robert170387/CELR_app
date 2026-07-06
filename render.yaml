@@ -1,0 +1,59 @@
+# render.yaml — Infrastructure as Code para Render
+# https://render.com/docs/infrastructure-as-code
+
+services:
+  - type: web
+    name: celr-app
+    runtime: php
+    repo: https://github.com/Robert170387/CELR_app.git
+    region: ohio
+    plan: free
+    buildCommand: composer install --no-dev --optimize-autoloader
+    staticPublishPath: .
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        value: celr_app
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_SSL
+        value: "true"
+      - key: DB_SSL_CA
+        sync: false
+      - key: APP_KEY
+        sync: false
+      - key: SESSION_LIFETIME
+        value: "3600"
+      - key: SESSION_SECURE
+        value: "true"
+    routes:
+      - type: redirect
+        source: /\.env
+        destination: /
+      - type: redirect
+        source: /\.sql
+        destination: /
+      - type: redirect
+        source: /\.md
+        destination: /
+      - type: redirect
+        source: /\.log
+        destination: /
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains
+    healthCheckPath: /login.php

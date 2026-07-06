@@ -3,7 +3,16 @@ include 'includes/db.php';
 include 'includes/functions.php';
 include 'includes/header.php';
 
+// Clear trip draft from localStorage if coming from successful creation
+if (isset($_GET['clear_draft'])): ?>
+<script>localStorage.removeItem('trip_draft_0');</script>
+<?php endif;
+
 $id = $_GET['id'] ?? 0;
+
+// Display success/error messages from redirects
+displayAlerts();
+
 // Fetch Full Trip Data with Hierarchical Location Information
 $stmt = $pdo->prepare("
     SELECT t.*, v.placa, CONCAT(d.firstname, ' ', IFNULL(d.lastname, '')) as driver_name, m.name as material_name, mc.name as manifest_company_name,
@@ -35,6 +44,22 @@ $trip = $stmt->fetch();
 
 if (!$trip)
     die("Viaje no encontrado");
+
+// Handle commission recalculation from config defaults
+if (isset($_GET['recalcular'])) {
+    $stmtConfig = $pdo->query("SELECT * FROM config LIMIT 1");
+    $cfg = $stmtConfig->fetch();
+    $defaultPercent = ($trip['trip_type'] === 'nacional') 
+        ? ($cfg['ganancia_nacional_percent'] ?? 10) 
+        : ($cfg['ganancia_urbano_percent'] ?? 8);
+
+    $pdo->prepare("UPDATE trips SET commission_percent = ? WHERE id = ?")->execute([$defaultPercent, $id]);
+    calculateTripFinancials($id);
+    echo '<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"><div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">Comisión recalculada al ' . $defaultPercent . '% según configuración.</div></div>';
+    // Re-fetch trip data
+    $stmt->execute([$id]);
+    $trip = $stmt->fetch();
+}
 
 // Navigation: Find Previous and Next Trip IDs
 $stmtPrev = $pdo->prepare("SELECT MAX(id) FROM trips WHERE id < ?");
@@ -79,7 +104,8 @@ if ($trip['date_load'] && $trip['date_unload']) {
 }
 
 // 2. Consumo KPL/G (Kilómetros por Galón)
-$total_fuel_gallons = array_sum(array_column(array_filter($expenses, fn($e) => ($e['category'] === 'combustible' || $e['category'] === 'Combustible')), 'gallons'));
+$fuelCategoryIds = $pdo->query("SELECT id FROM expense_categories WHERE slug = 'combustible' OR parent_id = (SELECT id FROM expense_categories WHERE slug = 'combustible')")->fetchAll(PDO::FETCH_COLUMN);
+$total_fuel_gallons = array_sum(array_column(array_filter($expenses, fn($e) => in_array($e['category_id'], $fuelCategoryIds)), 'gallons'));
 $kms_driven = $trip['kms_total'];
 $kplg = ($total_fuel_gallons > 0) ? ($kms_driven / $total_fuel_gallons) : 0;
 
@@ -268,9 +294,25 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                 <h3 class="text-lg leading-6 font-medium text-gray-900">Información Operativa</h3>
             </div>
             <div class="px-4 py-5 sm:p-6 space-y-4">
-                <div class="flex justify-between">
-                    <span class="text-sm font-medium text-gray-500">Estado</span>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium text-gray-500">Tipo Viaje</span>
                     <span class="text-sm font-bold text-gray-900 uppercase"><?php echo $trip['trip_type']; ?></span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium text-gray-500">Estado</span>
+                    <?php 
+                        $stColor = match($trip['status']) {
+                            'En Progreso' => 'bg-amber-100 text-amber-800',
+                            'Entregado' => 'bg-blue-100 text-blue-800',
+                            'Finalizado' => 'bg-green-100 text-green-800',
+                            'Cancelado' => 'bg-red-100 text-red-800',
+                            default => 'bg-gray-100 text-gray-700'
+                        };
+                    ?>
+                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 <?php echo $stColor; ?>">
+                        <?php echo htmlspecialchars($trip['status'] ?? 'En Progreso'); ?>
+                    </span>
                 </div>
 
                 <div class="border-t border-gray-100 my-2"></div>
@@ -449,6 +491,11 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                             * Calculado sobre Flete Neto
                         <?php endif; ?>
                     </p>
+                    <div class="mt-2">
+                        <a href="trip_details.php?id=<?php echo $trip['id']; ?>&recalcular=1"
+                            onclick="return confirm('¿Recalcular comisión desde el porcentaje global de configuración? Se sobrescribirá el valor actual.');"
+                            class="text-xs text-brand-600 hover:text-brand-800 font-medium">⟳ Recalcular desde configuración</a>
+                    </div>
                 </div>
 
                 <div class="border-t border-gray-200 my-2"></div>
@@ -539,14 +586,15 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-xs font-bold text-gray-600">Estado Actual:</span>
                                 <span
-                                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <?php echo ($trip['settlement_status'] ?? 'Pending') == 'Settled' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'; ?>">
-                                    <?php echo ($trip['settlement_status'] ?? 'Pending') == 'Settled' ? 'LIQUIDADO' : 'PENDIENTE'; ?>
+                                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <?php echo ($trip['settlement_status'] ?? 'Pending') == 'Complete' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'; ?>">
+                                    <?php echo ($trip['settlement_status'] ?? 'Pending') == 'Complete' ? 'LIQUIDADO' : 'PENDIENTE'; ?>
                                 </span>
                             </div>
 
-                            <?php if (($trip['settlement_status'] ?? 'Pending') != 'Settled'): ?>
+                            <?php if (($trip['settlement_status'] ?? 'Pending') != 'Complete'): ?>
                                 <!-- Form to Settle -->
                                 <form action="save_settlement_status.php" method="POST" class="mt-3">
+                                    <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
                                     <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
                                     <input type="hidden" name="action" value="settle">
 
@@ -580,6 +628,7 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                                 <?php endif; ?>
 
                                 <form action="save_settlement_status.php" method="POST">
+                                    <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
                                     <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
                                     <input type="hidden" name="action" value="reopen">
                                     <button type="submit"
@@ -623,10 +672,7 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                                     <li class="py-2 flex justify-between items-center">
                                         <div class="flex flex-col">
                                             <span class="text-sm text-gray-700">
-                                                <?php
-                                                $catName = ucfirst(str_replace('_', ' ', $e['category']));
-                                                echo htmlspecialchars($catName);
-                                                ?>
+                                                <?php echo htmlspecialchars($e['category_name'] ?? ucfirst(str_replace('_', ' ', $e['category']))); ?>
                                             </span>
                                             <span class="text-xs text-gray-400"><?php echo $e['date']; ?></span>
                                             <?php if ($e['receipt_photo']): ?>
@@ -660,10 +706,7 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                                     <li class="py-2 flex justify-between items-center">
                                         <div class="flex flex-col">
                                             <span class="text-sm text-gray-700">
-                                                <?php
-                                                $catName = ucfirst(str_replace('_', ' ', $e['category']));
-                                                echo htmlspecialchars($catName);
-                                                ?>
+                                                <?php echo htmlspecialchars($e['category_name'] ?? ucfirst(str_replace('_', ' ', $e['category']))); ?>
                                             </span>
                                             <span class="text-xs text-gray-400"><?php echo $e['date']; ?></span>
                                             <?php if ($e['receipt_photo']): ?>
@@ -740,6 +783,7 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                 <!-- Upload Form -->
                 <form action="trip_upload_pod.php" method="POST" enctype="multipart/form-data" class="space-y-4">
                     <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <div>
                         <label
                             class="block text-xs font-medium text-gray-700 uppercase tracking-widest mb-2">Cargar/Actualizar
@@ -804,6 +848,7 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                 <div class="p-6 bg-gray-50 md:col-span-1">
                     <h4 class="text-sm font-bold text-gray-900 mb-4">Registrar Nuevo Abono</h4>
                     <form action="save_trip_payment.php" method="POST" class="space-y-4">
+                        <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
                         <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
 
                         <div>
@@ -923,9 +968,9 @@ $contribution_margin_pct = ($net_freight > 0) ? ($utility / $net_freight) * 100 
                                                         <?php echo $pay['payment_concept']; ?>
                                                     </span>
                                                 </div>
-                                                <?php if ($pay['reference']): ?>
+                                                <?php if ($pay['reference_number'] ?? $pay['reference'] ?? ''): ?>
                                                     <div class="mt-0.5">Ref: <span
-                                                            class="font-mono"><?php echo htmlspecialchars($pay['reference']); ?></span>
+                                                            class="font-mono"><?php echo htmlspecialchars($pay['reference_number'] ?? $pay['reference']); ?></span>
                                                     </div>
                                                 <?php endif; ?>
                                                 <?php if ($pay['notes']): ?>

@@ -23,32 +23,35 @@ class PersonnelController extends Controller
             $this->redirect('personnel.php');
         }
 
+        // CSRF Validation
+        validateCsrfToken();
+
         $id = $_POST['id'] ?? null;
         $type = $_POST['type'] ?? 'Conductor';
         $firstname = $_POST['firstname'] ?? '';
         $lastname = $_POST['lastname'] ?? '';
         $doc_num = $_POST['document_number'] ?? '';
+        $name = trim("$firstname $lastname");
 
         try {
             $data = [
+                $name,
                 $type,
                 $_POST['document_type'] ?? 'CC',
                 $doc_num,
                 $firstname,
                 $lastname,
-                $_POST['gender'] ?? 'M',
+                $_POST['gender'] ?? 'Masculino',
                 $_POST['address'] ?? '',
                 $_POST['phone'] ?? '',
                 $_POST['city'] ?? '',
                 $_POST['department'] ?? '',
-                $_POST['country'] ?? 'Colombia',
                 $_POST['license_number'] ?? '',
                 $_POST['license_category'] ?? '',
                 !empty($_POST['license_expiry']) ? $_POST['license_expiry'] : null,
                 !empty($_POST['date_entry']) ? $_POST['date_entry'] : null,
                 !empty($_POST['date_exit']) ? $_POST['date_exit'] : null,
                 !empty($_POST['salary_basic']) ? $_POST['salary_basic'] : 0,
-                !empty($_POST['transport_assistance']) ? $_POST['transport_assistance'] : 0,
                 !empty($_POST['salary_variable']) ? $_POST['salary_variable'] : 0,
                 !empty($_POST['salary_internal']) ? $_POST['salary_internal'] : 0,
                 $_POST['bank_account'] ?? ''
@@ -56,23 +59,23 @@ class PersonnelController extends Controller
 
             if ($id) {
                 $sql = "UPDATE personnel SET 
-                    type = ?, document_type = ?, document_number = ?, firstname = ?, lastname = ?, gender = ?,
-                    address = ?, phone = ?, city = ?, department = ?, country = ?,
+                    name = ?, type = ?, document_type = ?, document_number = ?, firstname = ?, lastname = ?, gender = ?,
+                    address = ?, phone = ?, city = ?, department = ?,
                     license_number = ?, license_category = ?, license_expiry = ?,
                     date_entry = ?, date_exit = ?,
-                    salary_basic = ?, transport_assistance = ?, salary_variable = ?, salary_internal = ?, bank_account = ?
+                    salary_basic = ?, salary_variable = ?, salary_internal = ?, bank_account = ?
                     WHERE id = ?";
                 $data[] = $id;
                 $this->pdo->prepare($sql)->execute($data);
                 Audit::log('UPDATE', 'PERSONNEL', $id, "Actualización de personal: $firstname $lastname");
             } else {
                 $sql = "INSERT INTO personnel (
-                    type, document_type, document_number, firstname, lastname, gender,
-                    address, phone, city, department, country,
+                    name, type, document_type, document_number, firstname, lastname, gender,
+                    address, phone, city, department,
                     license_number, license_category, license_expiry,
                     date_entry, date_exit,
-                    salary_basic, transport_assistance, salary_variable, salary_internal, bank_account
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    salary_basic, salary_variable, salary_internal, bank_account
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $this->pdo->prepare($sql)->execute($data);
                 $id = $this->pdo->lastInsertId();
                 Audit::log('CREATE', 'PERSONNEL', $id, "Registro de nuevo personal: $firstname $lastname");

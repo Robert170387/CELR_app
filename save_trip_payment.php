@@ -4,6 +4,9 @@ require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // CSRF Validation
+    validateCsrfToken();
+
     // Validate
     if (empty($_POST['trip_id']) || empty($_POST['amount']) || empty($_POST['payment_date'])) {
         die("Error: Faltan datos obligatorios (Viaje, Monto, Fecha).");
@@ -21,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
 
         // Insert Payment
-        $stmt = $pdo->prepare("INSERT INTO trip_payments (trip_id, amount, payment_concept, payment_date, payment_method, reference, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO trip_payments (trip_id, amount, payment_concept, payment_date, payment_method, reference_number, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$trip_id, $amount, $concept, $date, $method, $reference, $notes]);
 
         // Recalculate Total Paid

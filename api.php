@@ -27,9 +27,6 @@ switch ($action) {
     case 'getVehicleLocations':
         $controller->getVehicleLocations();
         break;
-    case 'fetchSatrackLocations':
-        $controller->fetchSatrackLocations();
-        break;
     case 'triggerDatabaseBackup':
         $controller->triggerDatabaseBackup();
         break;
@@ -41,6 +38,9 @@ switch ($action) {
         break;
     case 'findActiveTrip':
         $controller->findActiveTrip();
+        break;
+    case 'getTripFinancials':
+        $controller->getTripFinancials();
         break;
     default:
         header('Content-Type: application/json');

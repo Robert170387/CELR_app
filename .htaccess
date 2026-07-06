@@ -1,0 +1,21 @@
+Options -Indexes
+
+<FilesMatch "^(db_diag|debug_.*|diagnostico.*|dump_schema|check_users|check_logo|scratch|test_.*)\.(php|html)$">
+    Require local
+</FilesMatch>
+
+<Files "CELR_App_Codebase_Context.md">
+    Require all denied
+</Files>
+
+<Files "celr_app_schema.sql">
+    Require all denied
+</Files>
+
+<Files "database.sql">
+    Require all denied
+</Files>
+
+<FilesMatch "\.(sql|md|txt|log)$">
+    Require all denied
+</FilesMatch>

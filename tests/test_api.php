@@ -3,6 +3,9 @@
  * Test API - Ejecuta pruebas y retorna resultados en JSON
  */
 
+require_once __DIR__ . '/../includes/security_utils.php';
+requireInternalToolAccess();
+
 header('Content-Type: application/json');
 error_reporting(E_ALL);
 

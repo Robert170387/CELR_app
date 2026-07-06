@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/security_utils.php';
+requireInternalToolAccess();
+
 /**
  * Diagnóstico de Edición de Viajes
  * Ejecutar: http://localhost/CELR_app/test_trip_edit.php?trip_id=1

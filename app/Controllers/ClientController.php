@@ -23,6 +23,9 @@ class ClientController extends Controller
             $this->redirect('clients.php');
         }
 
+        // CSRF Validation
+        validateCsrfToken();
+
         $person_type = $_POST['person_type'] ?? '';
         $errors = [];
 
@@ -51,30 +54,52 @@ class ClientController extends Controller
 
         try {
             $id = $_POST['id'] ?? null;
+            $firstname = !empty($_POST['firstname']) ? trim($_POST['firstname']) : '';
+            $lastname1 = !empty($_POST['lastname1']) ? trim($_POST['lastname1']) : '';
+            $lastname2 = !empty($_POST['lastname2']) ? trim($_POST['lastname2']) : '';
+            $business_name = !empty($_POST['business_name']) ? trim($_POST['business_name']) : '';
+            $legal_id = !empty($_POST['legal_id']) ? trim($_POST['legal_id']) : null;
+            $email = !empty($_POST['email']) ? trim($_POST['email']) : null;
+            $phone = !empty($_POST['phone']) ? trim($_POST['phone']) : null;
+            $mobile = !empty($_POST['mobile']) ? trim($_POST['mobile']) : null;
+            $address = !empty($_POST['address']) ? trim($_POST['address']) : null;
+            $country = !empty($_POST['country']) ? trim($_POST['country']) : 'Costa Rica';
+            $department = !empty($_POST['department']) ? trim($_POST['department']) : null;
+            $city = !empty($_POST['city']) ? trim($_POST['city']) : null;
+            $postal_code = !empty($_POST['postal_code']) ? trim($_POST['postal_code']) : null;
+            $notes = !empty($_POST['notes']) ? trim($_POST['notes']) : null;
+            $active = $_POST['active'] ?? 1;
+
+            if ($person_type === 'Jurídica') {
+                $name = $business_name;
+            } else {
+                $name = trim("$firstname $lastname1 $lastname2");
+            }
+
             $data = [
+                $name,
                 $person_type,
-                !empty($_POST['firstname']) ? trim($_POST['firstname']) : null,
-                !empty($_POST['lastname1']) ? trim($_POST['lastname1']) : null,
-                !empty($_POST['lastname2']) ? trim($_POST['lastname2']) : null,
-                !empty($_POST['business_name']) ? trim($_POST['business_name']) : null,
-                !empty($_POST['legal_id']) ? trim($_POST['legal_id']) : null,
-                !empty($_POST['email']) ? trim($_POST['email']) : null,
-                !empty($_POST['phone']) ? trim($_POST['phone']) : null,
-                !empty($_POST['mobile']) ? trim($_POST['mobile']) : null,
-                !empty($_POST['address']) ? trim($_POST['address']) : null,
-                $_POST['country'] ?? 'Colombia',
-                !empty($_POST['department']) ? trim($_POST['department']) : null,
-                !empty($_POST['city']) ? trim($_POST['city']) : null,
-                !empty($_POST['postal_code']) ? trim($_POST['postal_code']) : null,
-                !empty($_POST['notes']) ? trim($_POST['notes']) : null,
-                $_POST['active'] ?? 1
+                $firstname !== '' ? $firstname : null,
+                $lastname1 !== '' ? $lastname1 : null,
+                $lastname2 !== '' ? $lastname2 : null,
+                $business_name !== '' ? $business_name : null,
+                $legal_id,
+                $email,
+                $phone,
+                $mobile,
+                $address,
+                $country,
+                $department,
+                $city,
+                $postal_code,
+                $notes,
+                $active
             ];
 
             if ($id) {
                 $sql = "UPDATE clients SET 
-                        person_type = ?, firstname = ?, lastname1 = ?, lastname2 = ?, business_name = ?, legal_id = ?,
-                        email = ?, phone = ?, mobile = ?, address = ?, country = ?, department = ?, city = ?, 
-                        postal_code = ?, notes = ?, active = ?
+                        name = ?, person_type = ?, firstname = ?, lastname1 = ?, lastname2 = ?, business_name = ?, legal_id = ?,
+                        email = ?, phone = ?, mobile = ?, address = ?, country = ?, department = ?, city = ?, postal_code = ?, notes = ?, active = ?
                         WHERE id = ?";
                 $data[] = $id;
                 $stmt = $this->pdo->prepare($sql);
@@ -83,9 +108,9 @@ class ClientController extends Controller
                 Audit::log('UPDATE', 'CLIENT', $id, "Actualización de cliente");
             } else {
                 $sql = "INSERT INTO clients (
-                        person_type, firstname, lastname1, lastname2, business_name, legal_id,
+                        name, person_type, firstname, lastname1, lastname2, business_name, legal_id,
                         email, phone, mobile, address, country, department, city, postal_code, notes, active
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($data);
                 $id = $this->pdo->lastInsertId();

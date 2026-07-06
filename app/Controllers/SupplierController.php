@@ -23,6 +23,9 @@ class SupplierController extends Controller
             $this->redirect('suppliers.php');
         }
 
+        // CSRF Validation
+        validateCsrfToken();
+
         $id = $_POST['id'] ?? null;
         $person_type = $_POST['person_type'] ?? 'Física';
         $tax_regime = $_POST['tax_regime'] ?? 'Simplificado';
@@ -44,52 +47,42 @@ class SupplierController extends Controller
             $lastname2 = $_POST['lastname2'] ?? '';
         }
 
+        if ($person_type === 'Jurídica') {
+            $name = $business_name;
+        } else {
+            $name = trim("$firstname $lastname1 $lastname2");
+        }
+
         try {
             if ($id) {
                 $sql = "UPDATE suppliers SET 
-                    person_type = ?, tax_regime = ?, nit = ?, 
-                    firstname = ?, lastname1 = ?, lastname2 = ?, business_name = ?,
-                    address = ?, department = ?, city = ?, 
-                    bank_name = ?, bank_account = ?, account_type = ?
+                    name = ?, person_type = ?, nit = ?, 
+                    firstname = ?, lastname1 = ?, lastname2 = ?, business_name = ?
                     WHERE id = ?";
                 $this->pdo->prepare($sql)->execute([
+                    $name,
                     $person_type,
-                    $tax_regime,
                     $nit,
                     $firstname,
                     $lastname1,
                     $lastname2,
                     $business_name,
-                    $address,
-                    $department,
-                    $city,
-                    $bank_name,
-                    $bank_account,
-                    $account_type,
                     $id
                 ]);
                 Audit::log('UPDATE', 'SUPPLIER', $id, "Actualización de proveedor");
             } else {
                 $sql = "INSERT INTO suppliers (
-                     person_type, tax_regime, nit, 
-                     firstname, lastname1, lastname2, business_name,
-                     address, department, city, 
-                     bank_name, bank_account, account_type
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                     name, person_type, nit, 
+                     firstname, lastname1, lastname2, business_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 $this->pdo->prepare($sql)->execute([
+                    $name,
                     $person_type,
-                    $tax_regime,
                     $nit,
                     $firstname,
                     $lastname1,
                     $lastname2,
-                    $business_name,
-                    $address,
-                    $department,
-                    $city,
-                    $bank_name,
-                    $bank_account,
-                    $account_type
+                    $business_name
                 ]);
                 $id = $this->pdo->lastInsertId();
                 Audit::log('CREATE', 'SUPPLIER', $id, "Registro de nuevo proveedor");

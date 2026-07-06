@@ -8,11 +8,12 @@ if (!isset($_GET['id'])) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT e.*, t.origin, t.destination, v.placa, u.full_name as creator_name, u.username as creator_username
+$stmt = $pdo->prepare("SELECT e.*, t.origin, t.destination, v.placa, u.full_name as creator_name, u.username as creator_username, ec.slug as category_slug
                        FROM expenses e 
                        LEFT JOIN trips t ON e.trip_id = t.id 
                        LEFT JOIN vehicles v ON e.vehicle_id = v.id 
                        LEFT JOIN users u ON e.created_by = u.id
+                       LEFT JOIN expense_categories ec ON e.category_id = ec.id
                        WHERE e.id = ?");
 $stmt->execute([$_GET['id']]);
 $expense = $stmt->fetch();
@@ -41,7 +42,7 @@ if (!$expense) {
         <div class="px-4 py-5 sm:px-6">
             <h3 class="text-lg leading-6 font-medium text-gray-900">
                 Gasto #<?php echo $expense['id']; ?> -
-                <?php echo ucfirst(str_replace('_', ' ', $expense['category'])); ?>
+                <?php echo htmlspecialchars($expense['category_name'] ?? $expense['category'] ?? ''); ?>
             </h3>
             <p class="mt-1 max-w-2xl text-sm text-gray-500">Fecha: <?php echo $expense['date']; ?></p>
             <?php if (!empty($expense['creator_name']) || !empty($expense['creator_username'])): ?>
@@ -105,7 +106,7 @@ if (!$expense) {
                 </div>
 
                 <!-- Fuel Specifics -->
-                <?php if ($expense['category'] === 'combustible'): ?>
+                <?php if (($expense['category_slug'] ?? '') === 'combustible'): ?>
                     <div class="bg-yellow-50 px-4 py-5 sm:px-6 col-span-3">
                         <h4 class="text-sm font-bold text-gray-800">Detalles de Combustible</h4>
                     </div>

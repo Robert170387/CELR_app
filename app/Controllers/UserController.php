@@ -23,6 +23,9 @@ class UserController extends Controller
             $this->redirect('users.php');
         }
 
+        // CSRF Validation
+        validateCsrfToken();
+
         $id = $_POST['id'] ?? null;
         $username = trim($_POST['username'] ?? '');
         $full_name = trim($_POST['full_name'] ?? '');
@@ -53,14 +56,17 @@ class UserController extends Controller
             if ($id) {
                 $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ? AND id != ?");
                 $stmt->execute([$username, $id]);
-                if ($stmt->fetchColumn() > 0)
-                    die("El nombre de usuario ya está en uso.");
+                if ($stmt->fetchColumn() > 0) {
+                    $_SESSION['error'] = "El nombre de usuario ya está en uso.";
+                    $this->redirect('user_form.php', ['id' => $id]);
+                }
 
-                $sql = "UPDATE users SET username = ?, full_name = ?, role = ?, status = ?, related_client_id = ?, related_personnel_id = ?";
-                $params = [$username, $full_name, $role, $status, $related_client_id, $related_personnel_id];
+                $email = "$username@celr.com";
+                $sql = "UPDATE users SET username = ?, email = ?, full_name = ?, role = ?, status = ?, related_client_id = ?, related_personnel_id = ?";
+                $params = [$username, $email, $full_name, $role, $status, $related_client_id, $related_personnel_id];
 
                 if (!empty($password)) {
-                    $sql .= ", password = ?";
+                    $sql .= ", password_hash = ?";
                     $params[] = password_hash($password, PASSWORD_BCRYPT);
                 }
                 if ($avatarPath) {
@@ -76,12 +82,15 @@ class UserController extends Controller
             } else {
                 $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
                 $stmt->execute([$username]);
-                if ($stmt->fetchColumn() > 0)
-                    die("El nombre de usuario ya existe.");
+                if ($stmt->fetchColumn() > 0) {
+                    $_SESSION['error'] = "El nombre de usuario ya existe.";
+                    $this->redirect('user_form.php');
+                }
 
+                $email = "$username@celr.com";
                 $hash = password_hash($password, PASSWORD_BCRYPT);
-                $stmt = $this->pdo->prepare("INSERT INTO users (username, full_name, password, role, status, avatar, related_client_id, related_personnel_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$username, $full_name, $hash, $role, $status, $avatarPath, $related_client_id, $related_personnel_id]);
+                $stmt = $this->pdo->prepare("INSERT INTO users (username, email, full_name, password_hash, role, status, avatar, related_client_id, related_personnel_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$username, $email, $full_name, $hash, $role, $status, $avatarPath, $related_client_id, $related_personnel_id]);
                 $id = $this->pdo->lastInsertId();
                 Audit::log('CREATE', 'USER', $id, "Registro de nuevo usuario: $username");
                 $this->redirect('users.php', ['created' => 1]);

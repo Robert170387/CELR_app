@@ -56,7 +56,13 @@ class Controller
 
     protected function isAjaxRequest()
     {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+        $requestedWith = strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '');
+        $accept = strtolower($_SERVER['HTTP_ACCEPT'] ?? '');
+        $script = strtolower(basename($_SERVER['SCRIPT_NAME'] ?? ''));
+
+        return $requestedWith === 'xmlhttprequest'
+            || str_contains($accept, 'application/json')
+            || str_starts_with($script, 'api');
     }
 
     protected function jsonResponse($data, $status = 200)

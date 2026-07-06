@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/db.php';
+require_once 'includes/security_utils.php';
 include 'includes/header.php'; // includes auth.php
 
 $message = '';
@@ -17,21 +18,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Avatar Upload
     $avatarPath = $currentUser['avatar']; // Default to existing
-    if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = 'uploads/avatars/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
-        $fileExt = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
-        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    try {
+        $uploadedAvatar = safeUploadFile(
+            $_FILES['avatar'] ?? ['error' => UPLOAD_ERR_NO_FILE],
+            'uploads/avatars/',
+            [
+                'jpg' => ['image/jpeg'],
+                'jpeg' => ['image/jpeg'],
+                'png' => ['image/png'],
+                'gif' => ['image/gif'],
+                'webp' => ['image/webp'],
+            ],
+            'user',
+            3145728
+        );
 
-        if (in_array($fileExt, $allowedExts)) {
-            $newFileName = uniqid('user_', true) . '.' . $fileExt;
-            $destPath = $uploadDir . $newFileName;
-            if (move_uploaded_file($_FILES['avatar']['tmp_name'], $destPath)) {
-                $avatarPath = $destPath;
-            }
+        if ($uploadedAvatar) {
+            $avatarPath = $uploadedAvatar;
         }
+    } catch (RuntimeException $e) {
+        $error = $e->getMessage();
     }
 
     // 2. Handle Password (Optional)

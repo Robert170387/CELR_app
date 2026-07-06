@@ -26,16 +26,28 @@ class ExpenseController extends Controller
         // CSRF Validation
         validateCsrfToken();
 
-        // If the expense is fuel, calculate amount from gallons and price before validation
-        if (isset($_POST['category']) && $_POST['category'] === 'combustible') {
+        // Resolve category_id and slug from expense_categories table
+        $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+        $category_name = null;
+        $category_slug = null;
+        if ($category_id) {
+            $stmtCat = $this->pdo->prepare("SELECT name, slug FROM expense_categories WHERE id = ? AND active = 1");
+            $stmtCat->execute([$category_id]);
+            $catInfo = $stmtCat->fetch();
+            if ($catInfo) {
+                $category_name = $catInfo['name'];
+                $category_slug = $catInfo['slug'];
+            }
+        }
+
+        // If the expense is fuel (by slug), calculate amount from gallons and price before validation
+        if ($category_slug === 'combustible') {
             $gallons = floatval($_POST['gallons'] ?? 0);
             $price = floatval($_POST['price_per_gallon'] ?? 0);
-            // Guardamos el cálculo en $_POST para que la validación lo vea
             $_POST['amount'] = $gallons * $price;
         }
 
         $required = [
-            'category' => 'string',
             'amount' => 'numeric',
             'date' => 'date',
             'paid_by' => 'string'
@@ -43,6 +55,10 @@ class ExpenseController extends Controller
         $financials = ['amount'];
 
         $errors = array_merge(validatePOST($required), validateFinancials($financials));
+
+        if (!$category_id) {
+            $errors[] = "El campo 'Categoría' es obligatorio.";
+        }
 
         if (empty($_POST['vehicle_id'])) {
             $errors[] = "El campo 'Vehículo' es obligatorio.";
@@ -54,13 +70,13 @@ class ExpenseController extends Controller
         }
 
         $date = !empty($_POST['date']) ? $_POST['date'] : date('Y-m-d');
-        $category = $_POST['category'];
         $amount = $_POST['amount'];
         $desc = $_POST['description'] ?? '';
         $paid_by = $_POST['paid_by'];
 
         if (!in_array($paid_by, ['Conductor', 'Propietario'])) {
-            die("Error: El campo 'paid_by' debe ser 'Conductor' o 'Propietario'.");
+            $_SESSION['error'] = "El campo 'paid_by' debe ser 'Conductor' o 'Propietario'.";
+            $this->redirect('expense_form.php', isset($_POST['id']) ? ['id' => $_POST['id']] : []);
         }
 
         $trip_id = !empty($_POST['trip_id']) ? $_POST['trip_id'] : null;
@@ -115,12 +131,13 @@ class ExpenseController extends Controller
             $id = $_POST['id'] ?? null;
             if ($id) {
                 $sql = "UPDATE expenses SET 
-                    date=?, category=?, paid_by=?, amount=?, description=?, trip_id=?, vehicle_id=?, supplier_id=?,
+                    date=?, category_id=?, category_name=?, paid_by=?, amount=?, description=?, trip_id=?, vehicle_id=?, supplier_id=?,
                     payment_method=?, eds_name=?, eds_location=?, eds_state_id=?, eds_city_id=?, invoice_number=?, gallons=?, price_per_gallon=?, invoice_status=?, receipt_photo=?, department=?, city=?
                     WHERE id=?";
                 $this->pdo->prepare($sql)->execute([
                     $date,
-                    $category,
+                    $category_id,
+                    $category_name,
                     $paid_by,
                     $amount,
                     $desc,
@@ -141,15 +158,16 @@ class ExpenseController extends Controller
                     $_POST['city'] ?? null,
                     $id
                 ]);
-                Audit::log('UPDATE', 'EXPENSE', $id, "Actualización de gasto: $category");
+                Audit::log('UPDATE', 'EXPENSE', $id, "Actualización de gasto: $category_name");
             } else {
                 $sql = "INSERT INTO expenses (
-                    date, category, paid_by, amount, description, trip_id, vehicle_id, supplier_id,
+                    date, category_id, category_name, paid_by, amount, description, trip_id, vehicle_id, supplier_id,
                     payment_method, eds_name, eds_location, eds_state_id, eds_city_id, invoice_number, gallons, price_per_gallon, invoice_status, created_by, receipt_photo, department, city
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $this->pdo->prepare($sql)->execute([
                     $date,
-                    $category,
+                    $category_id,
+                    $category_name,
                     $paid_by,
                     $amount,
                     $desc,
@@ -171,7 +189,7 @@ class ExpenseController extends Controller
                     $_POST['city'] ?? null
                 ]);
                 $id = $this->pdo->lastInsertId();
-                $auditMsg = "Registro de nuevo gasto: $category";
+                $auditMsg = "Registro de nuevo gasto: $category_name";
                 if (isset($autoLinked) && $autoLinked) {
                     $auditMsg .= " (VINCULADO AUTOMÁTICAMENTE A VIAJE #$trip_id)";
                 }

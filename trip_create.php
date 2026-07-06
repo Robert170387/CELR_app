@@ -70,7 +70,8 @@ if ($editMode) {
         'percent_deductible_3' => '0',
         'value_deductible_4' => '0',
         'value_deductible_5' => '0',
-        'value_deductible_6' => '0'
+        'value_deductible_6' => '0',
+        'material_id' => ''
     ];
     $tripId = null;
 }
@@ -259,14 +260,28 @@ $msg = $_GET['msg'] ?? '';
             </a>
         </div>
         <script>
-            // Auto-scroll to top to show success message
             window.scrollTo({top: 0, behavior: 'smooth'});
-            // Auto-hide after 5 seconds
             setTimeout(function() {
                 var el = document.getElementById('success-msg');
                 if (el) el.style.opacity = '0.5';
             }, 5000);
         </script>
+    <?php endif; ?>
+    
+    <?php 
+    // Display flash messages (validation errors, etc.)
+    if (isset($_SESSION['flash_message'])): 
+        $flash = $_SESSION['flash_message'];
+        unset($_SESSION['flash_message']);
+        $alertClass = $flash['type'] === 'error' ? 'alert-error' : 'alert-success';
+    ?>
+        <div class="alert <?php echo $alertClass; ?>" id="flash-msg">
+            <strong><?php echo htmlspecialchars($flash['title']); ?>:</strong>
+            <?php echo $flash['text']; ?>
+        </div>
+        <style>
+            .alert-error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        </style>
     <?php endif; ?>
     
     <?php if ($editMode): ?>
@@ -291,6 +306,7 @@ $msg = $_GET['msg'] ?? '';
                 <label>Estado</label>
                 <select name="status">
                     <option value="En Progreso" <?php echo isSelected('En Progreso', $trip['status']); ?>>En Progreso</option>
+                    <option value="Entregado" <?php echo isSelected('Entregado', $trip['status']); ?>>Entregado</option>
                     <option value="Finalizado" <?php echo isSelected('Finalizado', $trip['status']); ?>>Finalizado</option>
                     <option value="Cancelado" <?php echo isSelected('Cancelado', $trip['status']); ?>>Cancelado</option>
                 </select>
@@ -306,7 +322,10 @@ $msg = $_GET['msg'] ?? '';
             </div>
             
             <div class="form-group">
-                <label>Material</label>
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Material</span>
+                    <a href="materials.php" target="_blank" style="font-size: 11px; color: #3498db; text-decoration: none; font-weight: normal;" title="Crear nuevo Material">+ Crear Nuevo</a>
+                </label>
                 <select name="material_id">
                     <option value="">-- Seleccione --</option>
                     <?php foreach ($materials as $m): ?>
@@ -320,7 +339,10 @@ $msg = $_GET['msg'] ?? '';
         
         <div class="form-row">
             <div class="form-group">
-                <label>Vehículo *</label>
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Vehículo *</span>
+                    <a href="vehicle_form.php" target="_blank" style="font-size: 11px; color: #3498db; text-decoration: none; font-weight: normal;" title="Crear nuevo Vehículo">+ Crear Nuevo</a>
+                </label>
                 <select name="vehicle_id" required>
                     <option value="">-- Seleccione --</option>
                     <?php foreach ($vehicles as $v): ?>
@@ -332,7 +354,10 @@ $msg = $_GET['msg'] ?? '';
             </div>
             
             <div class="form-group">
-                <label>Conductor *</label>
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Conductor *</span>
+                    <a href="personnel_form.php" target="_blank" style="font-size: 11px; color: #3498db; text-decoration: none; font-weight: normal;" title="Crear nuevo Conductor">+ Crear Nuevo</a>
+                </label>
                 <select name="driver_id" required>
                     <option value="">-- Seleccione --</option>
                     <?php foreach ($drivers as $d): ?>
@@ -344,7 +369,10 @@ $msg = $_GET['msg'] ?? '';
             </div>
             
             <div class="form-group">
-                <label>Cliente *</label>
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Empresa Manifiesto *</span>
+                    <a href="client_form.php" target="_blank" style="font-size: 11px; color: #3498db; text-decoration: none; font-weight: normal;" title="Crear nueva Empresa Manifiesto">+ Crear Nueva</a>
+                </label>
                 <select name="client_id" required>
                     <option value="">-- Seleccione --</option>
                     <?php foreach ($clients as $c): ?>
@@ -361,80 +389,104 @@ $msg = $_GET['msg'] ?? '';
                 </select>
             </div>
         </div>
-        
+
         <!-- SECCIÓN 2: RUTA Y UBICACIONES -->
         <h2>🗺️ Ruta y Ubicaciones</h2>
         
         <div class="two-columns">
-            <!-- ORIGEN -->
+
+            <!-- ══════════════ ORIGEN ══════════════ -->
             <div class="location-box">
                 <h3>📍 Origen</h3>
-                
+
+                <!-- hidden: el JS lo rellena con el nombre del municipio seleccionado -->
+                <input type="hidden" name="origin" id="origen_hidden"
+                       value="<?php echo htmlspecialchars($trip['origin']); ?>">
+
                 <div class="form-group">
-                    <label>Lugar de Origen *</label>
-                    <input type="text" name="origin" required 
-                           value="<?php echo htmlspecialchars($trip['origin']); ?>">
-                </div>
-                
-                <div class="form-group">
-                    <label>Departamento</label>
-                    <select name="origin_state_id" id="origin_state">
+                    <label for="origen_departamento">Departamento *</label>
+                    <select name="origin_state_id"
+                            id="origen_departamento"
+                            data-target="origen_municipio"
+                            data-hidden="origen_hidden"
+                            required>
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($states as $s): ?>
-                            <option value="<?php echo $s['id']; ?>" <?php echo isSelected($s['id'], $trip['origin_state_id']); ?>>
+                            <option value="<?php echo $s['id']; ?>"
+                                    <?php echo isSelected($s['id'], $trip['origin_state_id']); ?>>
                                 <?php echo htmlspecialchars($s['name']); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
-                    <label>Ciudad / Municipio</label>
-                    <select name="origin_city_id" id="origin_city">
+                    <label for="origen_municipio">Ciudad de Origen *</label>
+                    <!--
+                        data-selected : valor a preseleccionar en modo edición.
+                        data-hidden   : ID del input hidden a sincronizar.
+                    -->
+                    <select name="origin_city_id"
+                            id="origen_municipio"
+                            data-selected="<?php echo (int)($trip['origin_city_id'] ?? 0); ?>"
+                            data-hidden="origen_hidden"
+                            <?php echo empty($trip['origin_state_id']) ? 'disabled' : ''; ?>
+                            required>
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($originCities as $c): ?>
-                            <option value="<?php echo $c['id']; ?>" <?php echo isSelected($c['id'], $trip['origin_city_id']); ?>>
+                            <option value="<?php echo $c['id']; ?>"
+                                    <?php echo isSelected($c['id'], $trip['origin_city_id']); ?>>
                                 <?php echo htmlspecialchars($c['name']); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
             </div>
-            
-            <!-- DESTINO -->
+
+            <!-- ══════════════ DESTINO ══════════════ -->
             <div class="location-box">
                 <h3>🎯 Destino</h3>
-                
+
+                <!-- hidden: el JS lo rellena con el nombre del municipio seleccionado -->
+                <input type="hidden" name="destination" id="destino_hidden"
+                       value="<?php echo htmlspecialchars($trip['destination']); ?>">
+
                 <div class="form-group">
-                    <label>Lugar de Destino *</label>
-                    <input type="text" name="destination" required 
-                           value="<?php echo htmlspecialchars($trip['destination']); ?>">
-                </div>
-                
-                <div class="form-group">
-                    <label>Departamento</label>
-                    <select name="destination_state_id" id="dest_state">
+                    <label for="destino_departamento">Departamento *</label>
+                    <select name="destination_state_id"
+                            id="destino_departamento"
+                            data-target="destino_municipio"
+                            data-hidden="destino_hidden"
+                            required>
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($states as $s): ?>
-                            <option value="<?php echo $s['id']; ?>" <?php echo isSelected($s['id'], $trip['destination_state_id']); ?>>
+                            <option value="<?php echo $s['id']; ?>"
+                                    <?php echo isSelected($s['id'], $trip['destination_state_id']); ?>>
                                 <?php echo htmlspecialchars($s['name']); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
-                    <label>Ciudad / Municipio</label>
-                    <select name="destination_city_id" id="dest_city">
+                    <label for="destino_municipio">Ciudad de Destino *</label>
+                    <select name="destination_city_id"
+                            id="destino_municipio"
+                            data-selected="<?php echo (int)($trip['destination_city_id'] ?? 0); ?>"
+                            data-hidden="destino_hidden"
+                            <?php echo empty($trip['destination_state_id']) ? 'disabled' : ''; ?>
+                            required>
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($destCities as $c): ?>
-                            <option value="<?php echo $c['id']; ?>" <?php echo isSelected($c['id'], $trip['destination_city_id']); ?>>
+                            <option value="<?php echo $c['id']; ?>"
+                                    <?php echo isSelected($c['id'], $trip['destination_city_id']); ?>>
                                 <?php echo htmlspecialchars($c['name']); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
             </div>
+
         </div>
         
         <!-- FECHAS -->
@@ -474,8 +526,8 @@ $msg = $_GET['msg'] ?? '';
         
         <div class="form-row">
             <div class="form-group">
-                <label>Número de Manifiesto *</label>
-                <input type="text" name="manifest_number" required 
+                <label>Número de Manifiesto</label>
+                <input type="text" name="manifest_number" 
                        value="<?php echo htmlspecialchars($trip['manifest_number']); ?>">
             </div>
             
@@ -538,14 +590,17 @@ $msg = $_GET['msg'] ?? '';
             <input type="hidden" name="existing_manifest_file" value="<?php echo $trip['manifest_file']; ?>">
         </div>
         
-        <!-- Empresa de Manifiesto -->
+        <!-- Cliente -->
         <div class="form-group" style="margin-top: 20px;">
-            <label>Empresa de Manifiesto</label>
+            <label style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Cliente</span>
+                <a href="manifest_companies.php" target="_blank" style="font-size: 11px; color: #3498db; text-decoration: none; font-weight: normal;" title="Crear nuevo Cliente">+ Crear Nuevo</a>
+            </label>
             <?php
             $companies = $pdo->query("SELECT * FROM manifest_companies WHERE active=1 ORDER BY name ASC")->fetchAll();
             ?>
             <select name="manifest_company_id">
-                <option value="">-- Seleccione Empresa --</option>
+                <option value="">-- Seleccione Cliente --</option>
                 <?php foreach ($companies as $c): ?>
                     <option value="<?php echo $c['id']; ?>" <?php echo isSelected($c['id'], $trip['manifest_company_id'] ?? ''); ?>>
                         <?php echo htmlspecialchars($c['name']); ?>
@@ -588,7 +643,7 @@ $msg = $_GET['msg'] ?? '';
                 <label>Estado de Liquidación</label>
                 <select name="settlement_status">
                     <option value="Pending" <?php echo isSelected('Pending', $trip['settlement_status'] ?? 'Pending'); ?>>⏳ Pendiente</option>
-                    <option value="Settled" <?php echo isSelected('Settled', $trip['settlement_status'] ?? ''); ?>>✅ Liquidado</option>
+                    <option value="Settled" <?php echo isSelected('Complete', $trip['settlement_status'] ?? ''); ?>>✅ Liquidado</option>
                 </select>
             </div>
             
@@ -670,12 +725,347 @@ $msg = $_GET['msg'] ?? '';
         
         <!-- BOTONES -->
         <div class="actions">
-            <a href="trip_details.php?id=<?php echo $tripId; ?>" class="btn btn-secondary">Cancelar</a>
+            <?php if ($editMode): ?>
+                <a href="trip_details.php?id=<?php echo $tripId; ?>" class="btn btn-secondary">Cancelar</a>
+            <?php else: ?>
+                <a href="trips.php" class="btn btn-secondary">Cancelar</a>
+            <?php endif; ?>
             <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
         </div>
         
     </form>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SECCIÓN: Lista de Viajes Recientes
+    ═══════════════════════════════════════════════════════════════ -->
+    <h2>📋 Registro de Viajes</h2>
+    
+    <?php
+    // Fetch recent trips for the list
+    $recentTripsSQL = "SELECT t.*, v.placa, CONCAT(d.firstname, ' ', IFNULL(d.lastname, '')) as driver_name,
+                   m.name as material_name,
+                   CASE 
+                       WHEN c.person_type = 'Jurídica' THEN c.business_name
+                       ELSE CONCAT(IFNULL(c.firstname,''), ' ', IFNULL(c.lastname1,''))
+                   END as client_name
+            FROM trips t 
+            LEFT JOIN vehicles v ON t.vehicle_id = v.id 
+            LEFT JOIN personnel d ON d.id = t.driver_id 
+            LEFT JOIN materials m ON m.id = t.material_id 
+            LEFT JOIN clients c ON c.id = t.client_id
+            ORDER BY t.date_load DESC LIMIT 15";
+    $recentTrips = $pdo->query($recentTripsSQL)->fetchAll();
+    ?>
+    
+    <style>
+        .trips-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .trips-table th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .trips-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        .trips-table tr:hover { background: #f8fafc; }
+        .trips-table .trip-id { color: #94a3b8; font-weight: 500; font-size: 12px; }
+        .trips-table .route-arrow { color: #cbd5e1; margin: 0 6px; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-progress { background: #fef3c7; color: #92400e; }
+        .badge-done { background: #d1fae5; color: #065f46; }
+        .badge-cancel { background: #f3f4f6; color: #6b7280; }
+        .trip-actions a { color: #3b82f6; text-decoration: none; margin-right: 8px; font-size: 12px; }
+        .trip-actions a:hover { text-decoration: underline; }
+        .trip-actions a.edit-link { color: #6366f1; }
+        .trip-actions a.delete-link { color: #ef4444; }
+        .no-trips { text-align: center; padding: 30px; color: #94a3b8; font-style: italic; }
+    </style>
+    
+    <?php if (empty($recentTrips)): ?>
+        <p class="no-trips">No hay viajes registrados.</p>
+    <?php else: ?>
+    <div style="overflow-x: auto; margin-top: 10px;">
+        <table class="trips-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Material / Empresa Manifiesto</th>
+                    <th>Ruta</th>
+                    <th>Vehículo / Conductor</th>
+                    <th>Estado</th>
+                    <th style="text-align: right;">Flete Bruto</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($recentTrips as $rt): ?>
+                <tr>
+                    <td class="trip-id">#<?php echo str_pad($rt['id'], 5, '0', STR_PAD_LEFT); ?></td>
+                    <td>
+                        <strong><?php echo htmlspecialchars($rt['material_name'] ?? 'Sin definir'); ?></strong><br>
+                        <small style="color: #3498db; font-weight: 600;"><?php echo htmlspecialchars($rt['client_name'] ?? 'N/A'); ?></small>
+                    </td>
+                    <td>
+                        <?php echo htmlspecialchars($rt['origin'] ?: '—'); ?>
+                        <span class="route-arrow">→</span>
+                        <?php echo htmlspecialchars($rt['destination'] ?: '—'); ?><br>
+                        <small style="color: #94a3b8;"><?php echo $rt['date_load'] ? date('d M, Y', strtotime($rt['date_load'])) : '—'; ?></small>
+                    </td>
+                    <td>
+                        <strong><?php echo htmlspecialchars($rt['placa'] ?? '—'); ?></strong><br>
+                        <small style="color: #94a3b8;"><?php echo htmlspecialchars($rt['driver_name'] ?? '—'); ?></small>
+                    </td>
+                    <td>
+                        <?php
+                        $badgeClass = match($rt['status']) {
+                            'En Progreso' => 'badge-progress',
+                            'Finalizado' => 'badge-done',
+                            default => 'badge-cancel'
+                        };
+                        ?>
+                        <span class="badge <?php echo $badgeClass; ?>"><?php echo $rt['status']; ?></span>
+                    </td>
+                    <td style="text-align: right; font-weight: 600;">
+                        $<?php echo number_format($rt['flete_bruto'], 0, ',', '.'); ?>
+                    </td>
+                    <td class="trip-actions">
+                        <a href="trip_details.php?id=<?php echo $rt['id']; ?>" title="Ver">👁️</a>
+                        <a href="trip_create.php?edit=<?php echo $rt['id']; ?>" class="edit-link" title="Editar">✏️</a>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <p style="text-align: center; margin-top: 15px;">
+        <a href="trips.php" style="color: #3498db; text-decoration: none; font-weight: 600;">Ver todos los viajes →</a>
+    </p>
+    <?php endif; ?>
+
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MÓDULO: Carga Dinámica de Ciudades / Municipios
+     ───────────────────────────────────────────────────────────────────────
+     Sin dependencias externas. Usa Fetch API nativa.
+     Un solo listener maneja ORIGEN y DESTINO mediante data-attributes.
+═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+    'use strict';
+
+    const API_URL = 'get_cities.php';
+
+    /**
+     * syncHidden
+     * Escribe el texto del option seleccionado en el input hidden vinculado.
+     * Si no hay selección válida, limpia el hidden.
+     *
+     * @param {HTMLSelectElement} citySelect
+     */
+    function syncHidden(citySelect) {
+        const hiddenId = citySelect.dataset.hidden;
+        if (!hiddenId) return;
+        const hidden = document.getElementById(hiddenId);
+        if (!hidden) return;
+
+        const selectedOption = citySelect.options[citySelect.selectedIndex];
+        hidden.value = (selectedOption && selectedOption.value)
+            ? selectedOption.text.trim()
+            : '';
+    }
+
+    /**
+     * resetCitySelect
+     * Limpia, deshabilita y borra el hidden vinculado.
+     */
+    function resetCitySelect(citySelect) {
+        citySelect.innerHTML = '<option value="">-- Seleccione --</option>';
+        citySelect.disabled = true;
+        syncHidden(citySelect); // limpia el hidden
+    }
+
+    /**
+     * loadCities
+     * Consulta el endpoint y puebla el select de ciudad correspondiente.
+     */
+    async function loadCities(stateId, citySelect) {
+        citySelect.innerHTML = '<option value="">Cargando...</option>';
+        citySelect.disabled = true;
+
+        try {
+            const response = await fetch(`${API_URL}?state_id=${encodeURIComponent(stateId)}`);
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
+            const cities = await response.json();
+
+            if (!Array.isArray(cities) || cities.length === 0) {
+                resetCitySelect(citySelect);
+                return;
+            }
+
+            const defaultOption = '<option value="">-- Seleccione --</option>';
+            const options = cities.map(city =>
+                `<option value="${city.id}">${city.nombre}</option>`
+            ).join('');
+
+            citySelect.innerHTML = defaultOption + options;
+            citySelect.disabled = false;
+
+            // Preseleccionar en modo edición
+            const preselected = citySelect.dataset.selected;
+            if (preselected && preselected !== '0') {
+                citySelect.value = preselected;
+                citySelect.dataset.selected = '0';
+            }
+
+            // Sincronizar hidden con la ciudad que quedó seleccionada
+            syncHidden(citySelect);
+
+        } catch (error) {
+            console.error('[CELR] Error cargando ciudades:', error);
+            resetCitySelect(citySelect);
+        }
+    }
+
+    /**
+     * handleChange
+     * Listener unificado: detecta cambios en departamento Y en ciudad/municipio.
+     */
+    function handleChange(event) {
+        const el = event.target;
+
+        // ── Cambio en un select de DEPARTAMENTO ──
+        if (el.dataset.target) {
+            const citySelect = document.getElementById(el.dataset.target);
+            if (!citySelect) return;
+
+            if (!el.value) {
+                resetCitySelect(citySelect);
+                return;
+            }
+            loadCities(el.value, citySelect);
+            return;
+        }
+
+        // ── Cambio en un select de CIUDAD (sincroniza hidden) ──
+        if (el.dataset.hidden) {
+            syncHidden(el);
+        }
+    }
+
+    // ── Inicialización ──────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // Un solo listener cubre departamentos Y ciudades
+        const form = document.querySelector('form');
+        if (form) form.addEventListener('change', handleChange);
+
+        // Modo edición: disparar carga de ciudades preseleccionadas
+        ['origen_departamento', 'destino_departamento'].forEach(function (deptId) {
+            const deptSelect = document.getElementById(deptId);
+            if (deptSelect && deptSelect.value) {
+                deptSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    });
+
+}());
+
+// ── Autoguardado (Borrador) ────────────────────────────────────
+(function() {
+    const STORAGE_KEY = 'trip_draft_' + (<?php echo $tripId ?: 0; ?>);
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    // Restaurar borrador al cargar la página (solo en creación)
+    <?php if (!$editMode): ?>
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            const banner = document.createElement('div');
+            banner.id = 'draft-banner';
+            banner.style.cssText = 'background:#fef3c7;border:1px solid #f59e0b;color:#92400e;padding:12px 16px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;font-size:14px;';
+            banner.innerHTML = '<span>\u{1F4DD} Borrador encontrado del ' + new Date(data._savedAt).toLocaleString() + '</span>' +
+                '<span>' +
+                '<button id="restore-draft" style="background:#f59e0b;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;margin-right:6px;">Restaurar</button>' +
+                '<button id="discard-draft" style="background:transparent;color:#92400e;border:1px solid #f59e0b;padding:6px 14px;border-radius:4px;cursor:pointer;">Descartar</button>' +
+                '</span>';
+            form.parentNode.insertBefore(banner, form);
+
+            document.getElementById('restore-draft').addEventListener('click', function() {
+                for (const key in data) {
+                    if (key === '_savedAt') continue;
+                    const el = form.querySelector('[name="' + key + '"]');
+                    if (el) {
+                        if (el.type === 'checkbox') {
+                            el.checked = data[key] === true || data[key] === '1';
+                        } else {
+                            el.value = data[key];
+                        }
+                    }
+                }
+                banner.remove();
+                // Disparar cambios en selects de ubicación
+                ['origin_state_id', 'destination_state_id'].forEach(function(name) {
+                    const sel = form.querySelector('[name="' + name + '"]');
+                    if (sel && sel.value) sel.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+            document.getElementById('discard-draft').addEventListener('click', function() {
+                localStorage.removeItem(STORAGE_KEY);
+                banner.remove();
+            });
+        } catch(e) {}
+    }
+    <?php endif; ?>
+
+    // Guardar borrador periódicamente
+    function saveDraft() {
+        const data = {};
+        const els = form.querySelectorAll('[name]');
+        for (const el of els) {
+            if (el.type === 'submit' || el.type === 'file' || el.type === 'hidden') continue;
+            if (el.name === 'csrf_token') continue;
+            if (el.type === 'checkbox') {
+                data[el.name] = el.checked;
+            } else if (el.type === 'radio') {
+                if (el.checked) data[el.name] = el.value;
+            } else {
+                data[el.name] = el.value;
+            }
+        }
+        data._savedAt = new Date().toISOString();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+        // Indicador visual
+        let indicator = document.getElementById('draft-indicator');
+        if (!indicator) {
+            indicator = document.createElement('span');
+            indicator.id = 'draft-indicator';
+            indicator.style.cssText = 'position:fixed;bottom:12px;right:12px;background:#374151;color:#fff;font-size:11px;padding:4px 10px;border-radius:4px;z-index:9999;opacity:0.7;transition:opacity 0.3s;';
+            indicator.textContent = '\u{1F4BE} Borrador guardado';
+            document.body.appendChild(indicator);
+        }
+        indicator.style.opacity = '1';
+        clearTimeout(indicator._hideTimer);
+        indicator._hideTimer = setTimeout(function() { indicator.style.opacity = '0'; }, 3000);
+    }
+
+    // Autoguardar cada 5 segundos si hay cambios
+    let hasChanges = false;
+    form.addEventListener('input', function() { hasChanges = true; });
+    form.addEventListener('change', function() { hasChanges = true; });
+    setInterval(function() {
+        if (hasChanges) { saveDraft(); hasChanges = false; }
+    }, 5000);
+
+    // Guardar al cerrar / navegar
+    window.addEventListener('beforeunload', function() {
+        saveDraft();
+    });
+
+    // Limpiar borrador si venimos de un guardado exitoso
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'saved'): ?>
+    localStorage.removeItem(STORAGE_KEY);
+    <?php endif; ?>
+})();
+</script>
 
 </body>
 </html>

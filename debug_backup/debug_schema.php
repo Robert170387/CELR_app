@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/security_utils.php';
+requireInternalToolAccess();
+
 require 'includes/db.php';
 $tables = ['locations', 'loc_countries', 'loc_states', 'loc_cities', 'trips'];
 foreach ($tables as $table) {

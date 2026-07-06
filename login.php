@@ -1,6 +1,7 @@
 <?php
-require_once 'includes/db.php';
 session_start();
+require_once 'includes/functions.php';
+require_once 'includes/db.php';
 
 if (isset($_SESSION['user_id'])) {
     header("Location: index.php");
@@ -10,32 +11,61 @@ if (isset($_SESSION['user_id'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+    // Validate CSRF token
+    validateCsrfToken();
+
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
 
     $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
-    if ($user && password_verify($password, $user['password'])) {
-        if ($user['status'] === 'inactive') {
-            $error = "Su cuenta está desactivada. Contacte al administrador.";
+    if ($user) {
+        $now = date('Y-m-d H:i:s');
+
+        // Check if account is locked
+        if (!empty($user['locked_until']) && $user['locked_until'] > $now) {
+            $seconds = strtotime($user['locked_until']) - time();
+            $minutes = ceil($seconds / 60);
+            $error = "Esta cuenta está bloqueada temporalmente por seguridad. Intente de nuevo en $minutes minutos.";
         } else {
-            $stmtUpdate = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-            $stmtUpdate->execute([$user['id']]);
+            // Verify password (use password_hash column)
+            if (password_verify($password, $user['password_hash'])) {
+                if (!isset($user['status']) || $user['status'] === 'inactive' || !$user['active']) {
+                    $error = "Su cuenta está desactivada. Contacte al administrador.";
+                } else {
+                    // Reset failed attempts & update last login
+                    $stmtReset = $pdo->prepare("UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login = NOW() WHERE id = ?");
+                    $stmtReset->execute([$user['id']]);
 
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['full_name'] = $user['full_name'];
-            $_SESSION['avatar'] = $user['avatar'];
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['role'] = $user['role'];
+                    $_SESSION['full_name'] = $user['full_name'] ?? $user['username'];
+                    $_SESSION['avatar'] = $user['avatar'] ?? '';
 
-            if ($user['role'] === 'cliente' || $user['role'] === 'conductor') {
-                header("Location: portal/dashboard.php");
+                    if ($user['role'] === 'cliente' || $user['role'] === 'conductor') {
+                        header("Location: portal/dashboard.php");
+                    } else {
+                        header("Location: index.php");
+                    }
+                    exit;
+                }
             } else {
-                header("Location: index.php");
+                // Incorrect password: increment attempts
+                $attempts = ($user['failed_attempts'] ?? 0) + 1;
+                if ($attempts >= 5) {
+                    $locked_until = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+                    $stmtLock = $pdo->prepare("UPDATE users SET failed_attempts = ?, locked_until = ? WHERE id = ?");
+                    $stmtLock->execute([$attempts, $locked_until, $user['id']]);
+                    $error = "Usuario o contraseña inválidos. La cuenta ha sido bloqueada por 15 minutos debido a demasiados intentos fallidos.";
+                } else {
+                    $stmtFail = $pdo->prepare("UPDATE users SET failed_attempts = ? WHERE id = ?");
+                    $stmtFail->execute([$attempts, $user['id']]);
+                    $error = "Usuario o contraseña inválidos. Intentos fallidos: $attempts / 5.";
+                }
             }
-            exit;
         }
     } else {
         $error = "Usuario o contraseña inválidos.";
@@ -271,6 +301,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" action="">
+            <input type="hidden" name="csrf_token" value="<?= getCsrfToken() ?>">
             <label for="username">Usuario</label>
             <input type="text" id="username" name="username" placeholder="Ingrese su usuario" required autofocus>
 

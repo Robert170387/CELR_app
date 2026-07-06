@@ -18,6 +18,7 @@
 /uploads/receipts/*
 !/uploads/avatars/.gitkeep
 !/uploads/backups/.gitkeep
+!/uploads/backups/.htaccess
 !/uploads/logo/.gitkeep
 !/uploads/manifests/.gitkeep
 !/uploads/proofs/.gitkeep

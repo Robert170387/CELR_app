@@ -1,7 +1,14 @@
 <?php
 // api_supplier_location.php - Returns geographic info of a supplier
 require_once 'includes/db.php';
+require_once 'includes/auth.php';
 header('Content-Type: application/json');
+
+if (!isAuthenticated()) {
+    http_response_code(403);
+    echo json_encode(['error' => true, 'message' => 'No autorizado']);
+    exit;
+}
 
 $supplier_id = intval($_GET['supplier_id'] ?? 0);
 if (!$supplier_id) {

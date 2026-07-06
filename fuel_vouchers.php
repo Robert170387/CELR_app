@@ -20,7 +20,7 @@ $sql = "
     LEFT JOIN vehicles v ON e.vehicle_id = v.id
     LEFT JOIN suppliers s ON e.supplier_id = s.id
     LEFT JOIN trips t ON e.trip_id = t.id
-    WHERE e.category = 'combustible'
+    WHERE e.category_id IN (SELECT id FROM expense_categories WHERE slug = 'combustible' OR parent_id = (SELECT id FROM expense_categories WHERE slug = 'combustible'))
 ";
 
 $params = [];
@@ -187,10 +187,10 @@ foreach ($vouchers as $v) {
                                             <?php echo htmlspecialchars($v['supplier_name'] ?? 'No registrado'); ?>
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-bold">
-                                            <?php echo number_format($v['gallons'], 2); ?>
+                                            <?php echo number_format((float)($v['gallons'] ?? 0), 2); ?>
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                            <?php echo number_format($v['price_per_gallon'], 0); ?>
+                                            <?php echo number_format((float)($v['price_per_gallon'] ?? 0), 0); ?>
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-bold text-green-600">
                                             <?php echo '$' . number_format($v['amount'], 0); ?>

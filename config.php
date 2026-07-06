@@ -11,8 +11,67 @@ use App\Core\Cache;
 
 $config = Cache::remember('system_config', function() use ($pdo) {
     $stmt = $pdo->query("SELECT * FROM config LIMIT 1");
-    return $stmt->fetch();
+    $data = $stmt->fetch();
+    
+    // Default values for all configuration fields to ensure they exist
+    $defaults = [
+        // Localization
+        'base_country' => 'Colombia',
+        'currency' => 'COP',
+        'currency_symbol' => '$',
+        'thousands_separator' => '.',
+        'decimal_separator' => ',',
+        'decimal_count' => 0,
+        // Fiscal defaults
+        'default_rete_fuente' => 0,
+        'default_rete_ica' => 0,
+        'default_iva_percent' => 19,
+        'default_rete_iva_percent' => 0,
+        // Operational defaults
+        'ganancia_nacional_percent' => 0,
+        'ganancia_urbano_percent' => 0,
+        'weight_unit' => 'Toneladas',
+        'distance_unit' => 'Kilómetros',
+        'maint_warning_kms' => 500,
+        'doc_warning_days' => 30,
+        'unusual_expense_threshold' => 1000000,
+        // Identity defaults
+        'business_name' => '',
+        'nit' => '',
+        'billing_resolution' => '',
+        'address' => '',
+        'phone' => '',
+        'email' => '',
+        // Misc defaults
+        'logo_path' => '',
+        'last_backup_at' => null,
+    ];
+    
+    return array_merge($defaults, $data ?: []);
 }, 300); // Cache for 5 minutes
+
+// Force cache refresh if stored logo_path points to a non-existent file
+if (!empty($config['logo_path']) && !file_exists($config['logo_path'])) {
+    Cache::delete('system_config');
+    $config = Cache::remember('system_config', function() use ($pdo) {
+        $stmt = $pdo->query("SELECT * FROM config LIMIT 1");
+        $data = $stmt->fetch();
+        $defaults = [
+            'base_country' => 'Colombia', 'currency' => 'COP', 'currency_symbol' => '$',
+            'thousands_separator' => '.', 'decimal_separator' => ',', 'decimal_count' => 0,
+            'default_rete_fuente' => 0, 'default_rete_ica' => 0,
+            'default_iva_percent' => 19, 'default_rete_iva_percent' => 0,
+            'ganancia_nacional_percent' => 0, 'ganancia_urbano_percent' => 0,
+            'weight_unit' => 'Toneladas', 'distance_unit' => 'Kilómetros',
+            'maint_warning_kms' => 500, 'doc_warning_days' => 30,
+            'unusual_expense_threshold' => 1000000,
+            'business_name' => '', 'nit' => '', 'billing_resolution' => '',
+            'address' => '', 'phone' => '', 'email' => '',
+            'logo_path' => '', 'last_backup_at' => null,
+        ];
+        return array_merge($defaults, $data ?: []);
+    }, 300);
+}
 ?>
 
 <div class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
@@ -254,43 +313,6 @@ $config = Cache::remember('system_config', function() use ($pdo) {
             </div>
         </div>
 
-        <!-- 5. INTEGRACIÓN SATRACK -->
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-8 border-b border-slate-50 bg-slate-50/30">
-                <h3 class="text-lg font-bold text-slate-900 flex items-center">
-                    <span class="w-2 h-6 bg-brand-600 rounded-full mr-3"></span>
-                    Integración SATRACK (GPS)
-                </h3>
-            </div>
-            <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-widest">Token de
-                        Acceso</label>
-                    <input type="password" name="satrack_token"
-                        value="<?php echo htmlspecialchars($config['satrack_token'] ?? ''); ?>"
-                        placeholder="Ingrese el Token de SATRACK"
-                        class="w-full bg-slate-50 border-0 rounded-xl focus:ring-2 focus:ring-brand-500 font-medium text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-widest">API Key</label>
-                    <input type="password" name="satrack_api_key"
-                        value="<?php echo htmlspecialchars($config['satrack_api_key'] ?? ''); ?>"
-                        placeholder="Ingrese la API Key"
-                        class="w-full bg-slate-50 border-0 rounded-xl focus:ring-2 focus:ring-brand-500 font-medium text-sm">
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-widest">Endpoint API
-                        (URL)</label>
-                    <input type="text" name="satrack_api_url"
-                        value="<?php echo htmlspecialchars($config['satrack_api_url'] ?? 'https://api.satrack.com/v1/locations'); ?>"
-                        class="w-full bg-slate-50 border-0 rounded-xl focus:ring-2 focus:ring-brand-500 font-medium text-xs">
-                    <p class="mt-2 text-[10px] text-slate-400 italic">Configure estas credenciales para habilitar el
-                        rastreo
-                        satelital en el mapa del dashboard.</p>
-                </div>
-            </div>
-        </div>
-
         <!-- ACTIONS -->
         <div class="flex items-center justify-between p-8 bg-slate-900 rounded-3xl shadow-xl shadow-slate-900/20">
             <div>
@@ -304,7 +326,56 @@ $config = Cache::remember('system_config', function() use ($pdo) {
         </div>
     </form>
 
-    <!-- 5. SEGURIDAD (Backup) -->
+    <!-- 5. EMPRESAS DE MANIFIESTO -->
+    <div class="mt-12">
+        <div class="md:grid md:grid-cols-3 md:gap-6">
+            <div class="md:col-span-1">
+                <div class="px-4 sm:px-0">
+                    <h3 class="text-lg font-bold text-slate-900">Empresas de Manifiesto</h3>
+                    <p class="mt-1 text-xs font-medium text-slate-500">
+                        Empresas que emiten manifiestos de carga.
+                    </p>
+                </div>
+            </div>
+            <div class="mt-5 md:mt-0 md:col-span-2">
+                <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Empresas Registradas</p>
+                        <a href="manifest_companies.php"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-xl text-white bg-brand-500 hover:bg-brand-600 transition-all shadow-sm">
+                            Gestionar Empresas
+                        </a>
+                    </div>
+                    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-xl">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                <?php
+                                $manifiestoCompanies = $pdo->query("SELECT id, name FROM manifest_companies WHERE active = 1 ORDER BY name ASC")->fetchAll();
+                                if ($manifiestoCompanies):
+                                    foreach ($manifiestoCompanies as $mc): ?>
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-900"><?php echo htmlspecialchars($mc['name']); ?></td>
+                                        </tr>
+                                    <?php endforeach;
+                                else: ?>
+                                    <tr>
+                                        <td class="px-4 py-6 text-sm text-slate-400 text-center">No hay empresas registradas.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. SEGURIDAD (Backup) -->
     <div class="mt-12">
         <div class="md:grid md:grid-cols-3 md:gap-6">
             <div class="md:col-span-1">

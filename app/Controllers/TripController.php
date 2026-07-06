@@ -33,8 +33,7 @@ class TripController extends Controller
             'vehicle_id' => 'numeric',
             'driver_id' => 'numeric',
             // material_id and client_id are optional (form allows '-- Seleccione --')
-            'origin' => 'string',
-            'destination' => 'string',
+            // origin and destination come from JS-populated hidden fields, validated separately
             'date_load' => 'date',
             'kms_start' => 'numeric',
             'flete_bruto' => 'numeric',
@@ -64,8 +63,9 @@ class TripController extends Controller
         $errors = array_merge(validatePOST($required), validateFinancials($financials));
 
         if (!empty($errors)) {
-            $errorStr = implode("\n", $errors);
-            die("Error de validación:\n" . $errorStr);
+            setFlashMessage('error', 'Error de Validación', implode('<br>', $errors));
+            $editParam = isset($_POST['trip_id']) && $_POST['trip_id'] ? ['edit' => $_POST['trip_id']] : [];
+            $this->redirect('trip_create.php', $editParam);
         }
 
         // --- COLLECT INPUTS ---
@@ -109,16 +109,24 @@ class TripController extends Controller
 
             error_log("Error saving trip: " . $e->getMessage());
 
-            if (isProduction()) {
-                die("Error al guardar el viaje. Por favor intente nuevamente.");
-            } else {
-                die("Error saving trip: " . $e->getMessage());
-            }
+            $errorMsg = isProduction() ? "Error al guardar el viaje. Por favor intente nuevamente." : "Error saving trip: " . $e->getMessage();
+            setFlashMessage('error', 'Error de Base de Datos', $errorMsg);
+            $editParam = isset($_POST['trip_id']) && $_POST['trip_id'] ? ['edit' => $_POST['trip_id']] : [];
+            $this->redirect('trip_create.php', $editParam);
         }
     }
 
     private function collectTripData()
     {
+        // Map settlement_status from form value to DB enum
+        $settlementMap = ['Settled' => 'Complete', 'Pending' => 'Pending', 'Partial' => 'Partial', 'Cancelled' => 'Cancelled', 'Complete' => 'Complete'];
+        $rawSettlement = $_POST['settlement_status'] ?? 'Pending';
+        $settlement = $settlementMap[$rawSettlement] ?? 'Pending';
+
+        // Build origin/destination from hidden fields or city names
+        $origin = !empty($_POST['origin']) ? $_POST['origin'] : '';
+        $destination = !empty($_POST['destination']) ? $_POST['destination'] : '';
+
         return [
             'trip_type' => $_POST['trip_type'],
             'status' => $_POST['status'] ?? 'En Progreso',
@@ -127,16 +135,17 @@ class TripController extends Controller
             'material_id' => !empty($_POST['material_id']) ? $_POST['material_id'] : null,
             'client_id' => !empty($_POST['client_id']) ? $_POST['client_id'] : null,
 
-            'origin' => $_POST['origin'],
+            'origin' => $origin,
             'origin_city_id' => !empty($_POST['origin_city_id']) ? $_POST['origin_city_id'] : null,
             'origin_state_id' => !empty($_POST['origin_state_id']) ? $_POST['origin_state_id'] : null,
 
-            'destination' => $_POST['destination'],
+            'destination' => $destination,
             'destination_city_id' => !empty($_POST['destination_city_id']) ? $_POST['destination_city_id'] : null,
             'destination_state_id' => !empty($_POST['destination_state_id']) ? $_POST['destination_state_id'] : null,
 
             'date_load' => $_POST['date_load'],
             'date_unload' => !empty($_POST['date_unload']) ? $_POST['date_unload'] : null,
+            'manifest_date' => !empty($_POST['manifest_date']) ? $_POST['manifest_date'] : null,
 
             'kms_start' => $_POST['kms_start'],
             'kms_end' => !empty($_POST['kms_end']) ? $_POST['kms_end'] : $_POST['kms_start'],
@@ -168,7 +177,7 @@ class TripController extends Controller
             'destination_point_id' => !empty($_POST['destination_point_id']) ? $_POST['destination_point_id'] : null,
 
             'trip_id' => $_POST['trip_id'] ?? null,
-            'settlement_status' => $_POST['settlement_status'] ?? 'Pending',
+            'settlement_status' => $settlement,
             'settlement_notes' => $_POST['settlement_notes'] ?? '',
 
             'odometer_confirmed' => isset($_POST['odometer_confirmed']) ? 1 : 0
@@ -177,9 +186,11 @@ class TripController extends Controller
 
     private function validateBusinessLogic($data)
     {
-        // Validation: Prevent Finalizado if not Settled
-        if ($data['status'] === 'Finalizado' && $data['settlement_status'] !== 'Settled') {
-            die("Error: No se puede finalizar el viaje sin liquidar el saldo de viáticos.");
+        // Validation: Prevent Finalizado if not Settled (DB enum uses 'Complete')
+        if ($data['status'] === 'Finalizado' && $data['settlement_status'] !== 'Complete') {
+            setFlashMessage('error', 'Error de Liquidación', 'No se puede finalizar el viaje sin liquidar el saldo de viáticos.');
+            $editParam = $data['trip_id'] ? ['edit' => $data['trip_id']] : [];
+            $this->redirect('trip_create.php', $editParam);
         }
 
         // 1. Date Logic
@@ -219,7 +230,9 @@ class TripController extends Controller
         $busyResult = $busyStmt->fetch();
 
         if ($busyResult && $status === 'En Progreso') {
-            die("Error: El " . $busyResult['type'] . " ya tiene un viaje activo 'En Progreso'.");
+            setFlashMessage('error', 'Conflicto de Disponibilidad', "El " . $busyResult['type'] . " ya tiene un viaje activo 'En Progreso'.");
+            $editParam = $tripId ? ['edit' => $tripId] : [];
+            $this->redirect('trip_create.php', $editParam);
         }
     }
 
@@ -238,6 +251,7 @@ class TripController extends Controller
                 origin = ?, origin_city_id = ?, origin_state_id = ?,
                 destination = ?, destination_city_id = ?, destination_state_id = ?,
                 date_load = ?, date_unload = ?,
+                manifest_date = ?,
                 kms_start = ?, kms_end = ?,
                 manifest_company_id = ?, manifest_number = ?, flete_bruto = ?,
                 weight_declared = ?, weight_origin = ?, weight_dest = ?,
@@ -267,6 +281,7 @@ class TripController extends Controller
             $data['destination_state_id'],
             $data['date_load'],
             $data['date_unload'],
+            $data['manifest_date'],
             $data['kms_start'],
             $data['kms_end'],
             $data['manifest_company_id'],
@@ -295,8 +310,78 @@ class TripController extends Controller
 
         calculateTripFinancials($data['trip_id']);
 
-        // Trigger alert if status is 'En Destino'
-        if ($data['status'] === 'En Destino') {
+        // Sync RNDC manifest record (create if missing, update if exists)
+        if (!empty($data['manifest_number'])) {
+            try {
+                $stmtCheck = $this->pdo->prepare("SELECT id FROM manifiestos_rndc WHERE trip_id = ?");
+                $stmtCheck->execute([$data['trip_id']]);
+                $existingRndcId = $stmtCheck->fetchColumn();
+
+                // Look up client name
+                $clientName = '';
+                if (!empty($data['client_id'])) {
+                    $stmtClient = $this->pdo->prepare("SELECT 
+                        CASE WHEN person_type = 'Jurídica' THEN business_name 
+                        ELSE CONCAT(firstname, ' ', lastname1) END as name 
+                        FROM clients WHERE id = ?");
+                    $stmtClient->execute([$data['client_id']]);
+                    $clientName = $stmtClient->fetchColumn() ?: '';
+                }
+
+                // Look up material name
+                $materialName = '';
+                if (!empty($data['material_id'])) {
+                    $stmtMat = $this->pdo->prepare("SELECT name FROM materials WHERE id = ?");
+                    $stmtMat->execute([$data['material_id']]);
+                    $materialName = $stmtMat->fetchColumn() ?: '';
+                }
+
+                // Look up manifest company
+                $empresaTransporte = '';
+                if (!empty($data['manifest_company_id'])) {
+                    $stmtEmp = $this->pdo->prepare("SELECT name FROM manifest_companies WHERE id = ?");
+                    $stmtEmp->execute([$data['manifest_company_id']]);
+                    $empresaTransporte = $stmtEmp->fetchColumn() ?: '';
+                }
+
+                if ($existingRndcId) {
+                    $stmtUpd = $this->pdo->prepare("UPDATE manifiestos_rndc SET
+                        nro_manifiesto = ?, vehicle_id = ?, driver_id = ?,
+                        origen = ?, destino = ?, descripcion_mercancia = ?, peso_kg = ?,
+                        flete_pactado = ?, anticipo = ?, fecha_expedicion = ?,
+                        empresa_transporte = ?, remitente_nombre = ?
+                        WHERE id = ?");
+                    $stmtUpd->execute([
+                        $data['manifest_number'], $data['vehicle_id'], $data['driver_id'],
+                        $data['origin'], $data['destination'], $materialName,
+                        $data['weight_declared'] ?: null, $data['flete_bruto'],
+                        $data['advance'], $data['date_load'],
+                        $empresaTransporte, $clientName,
+                        $existingRndcId
+                    ]);
+                } else {
+                    $stmtIns = $this->pdo->prepare("INSERT INTO manifiestos_rndc (
+                        nro_manifiesto, vehicle_id, driver_id, trip_id,
+                        origen, destino, descripcion_mercancia, peso_kg,
+                        flete_pactado, anticipo, fecha_expedicion,
+                        empresa_transporte, remitente_nombre, estado
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Activo')");
+                    $stmtIns->execute([
+                        $data['manifest_number'], $data['vehicle_id'], $data['driver_id'],
+                        $data['trip_id'],
+                        $data['origin'], $data['destination'], $materialName,
+                        $data['weight_declared'] ?: null, $data['flete_bruto'],
+                        $data['advance'], $data['date_load'],
+                        $empresaTransporte, $clientName
+                    ]);
+                }
+            } catch (PDOException $e) {
+                error_log("Error syncing RNDC manifest for trip {$data['trip_id']}: " . $e->getMessage());
+            }
+        }
+
+        // Trigger alert if status is 'Entregado'
+        if ($data['status'] === 'Entregado') {
             $this->createSystemAlert(
                 'status_change',
                 $data['trip_id'],
@@ -321,6 +406,7 @@ class TripController extends Controller
             origin, origin_city_id, origin_state_id,
             destination, destination_city_id, destination_state_id,
             date_load, date_unload,
+            manifest_date,
             kms_start, kms_end,
             manifest_company_id, manifest_number, flete_bruto,
             weight_declared, weight_origin, weight_dest,
@@ -336,6 +422,7 @@ class TripController extends Controller
             ?, ?, ?,
             ?, ?, ?,
             ?, ?,
+            ?,
             ?, ?,
             ?, ?, ?,
             ?, ?, ?,
@@ -393,6 +480,65 @@ class TripController extends Controller
 
         $trip_id = $this->pdo->lastInsertId();
         calculateTripFinancials($trip_id);
+
+        // Auto-create RNDC manifest record if manifest_number is present
+        if (!empty($data['manifest_number'])) {
+            try {
+                // Look up client name for remitente
+                $clientName = '';
+                if (!empty($data['client_id'])) {
+                    $stmtClient = $this->pdo->prepare("SELECT 
+                        CASE WHEN person_type = 'Jurídica' THEN business_name 
+                        ELSE CONCAT(firstname, ' ', lastname1) END as name 
+                        FROM clients WHERE id = ?");
+                    $stmtClient->execute([$data['client_id']]);
+                    $clientName = $stmtClient->fetchColumn() ?: '';
+                }
+
+                // Look up material name for description
+                $materialName = '';
+                if (!empty($data['material_id'])) {
+                    $stmtMat = $this->pdo->prepare("SELECT name FROM materials WHERE id = ?");
+                    $stmtMat->execute([$data['material_id']]);
+                    $materialName = $stmtMat->fetchColumn() ?: '';
+                }
+
+                // Look up manifest company for empresa_transporte
+                $empresaTransporte = '';
+                if (!empty($data['manifest_company_id'])) {
+                    $stmtEmp = $this->pdo->prepare("SELECT name FROM manifest_companies WHERE id = ?");
+                    $stmtEmp->execute([$data['manifest_company_id']]);
+                    $empresaTransporte = $stmtEmp->fetchColumn() ?: '';
+                }
+
+                $stmtRndc = $this->pdo->prepare("INSERT INTO manifiestos_rndc (
+                    nro_manifiesto, vehicle_id, driver_id, trip_id,
+                    origen, destino, descripcion_mercancia, peso_kg,
+                    flete_pactado, anticipo, fecha_expedicion,
+                    empresa_transporte, remitente_nombre,
+                    estado
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Activo')");
+
+                $stmtRndc->execute([
+                    $data['manifest_number'],
+                    $data['vehicle_id'],
+                    $data['driver_id'],
+                    $trip_id,
+                    $data['origin'],
+                    $data['destination'],
+                    $materialName,
+                    $data['weight_declared'] ?: null,
+                    $data['flete_bruto'],
+                    $data['advance'],
+                    $data['date_load'],
+                    $empresaTransporte,
+                    $clientName
+                ]);
+            } catch (PDOException $e) {
+                error_log("Error auto-creating RNDC manifest for trip $trip_id: " . $e->getMessage());
+            }
+        }
+
         Audit::log('CREATE', 'TRIP', $trip_id, "Registro de nuevo viaje");
         return 'trip_details.php?id=' . $trip_id . '&created=1&clear_draft=tripForm';
     }
@@ -400,12 +546,14 @@ class TripController extends Controller
     public function uploadPod()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            die('Method Not Allowed');
+            setFlashMessage('error', 'Error', 'Método No Permitido');
+            $this->redirect('trips.php');
         }
 
         $tripId = $_POST['trip_id'] ?? null;
         if (!$tripId) {
-            die('Trip ID required');
+            setFlashMessage('error', 'Error', 'Trip ID requerido');
+            $this->redirect('trips.php');
         }
 
         if (isset($_FILES['pod_file']) && $_FILES['pod_file']['error'] === UPLOAD_ERR_OK) {
@@ -424,7 +572,8 @@ class TripController extends Controller
                 Audit::log('UPDATE', 'TRIP', $tripId, "Carga de prueba de entrega (ePOD)");
                 $this->redirect('trip_details.php', ['id' => $tripId, 'success' => 'pod_uploaded']);
             } else {
-                die("Error uploading file.");
+                setFlashMessage('error', 'Error', 'Error al cargar el archivo en el servidor.');
+                $this->redirect('trip_details.php', ['id' => $tripId]);
             }
         } else {
             $this->redirect('trip_details.php', ['id' => $tripId, 'error' => 'upload_failed']);
@@ -540,8 +689,10 @@ class TripController extends Controller
         $this->requireRole(['conductor', 'admin']);
 
         $trip_id = $_POST['trip_id'] ?? null;
-        if (!$trip_id)
-            die("Trip ID required.");
+        if (!$trip_id) {
+            setFlashMessage('error', 'Error', 'Trip ID requerido.');
+            $this->redirect('dashboard.php');
+        }
 
         // Validate Ownership
         if ($_SESSION['role'] === 'conductor') {
@@ -552,7 +703,8 @@ class TripController extends Controller
             $stmtTrip = $this->pdo->prepare("SELECT driver_id FROM trips WHERE id = ?");
             $stmtTrip->execute([$trip_id]);
             if ($stmtTrip->fetchColumn() != $conductorId) {
-                die("Unauthorized: This trip is not assigned to you.");
+                setFlashMessage('error', 'No Autorizado', 'Este viaje no está asignado a tu usuario.');
+                $this->redirect('dashboard.php');
             }
         }
 
@@ -577,7 +729,8 @@ class TripController extends Controller
             $this->redirect('dashboard.php', ['success' => 'updated', 'odt' => $trip_id]);
 
         } catch (PDOException $e) {
-            die("Error processing digital sheet: " . $e->getMessage());
+            setFlashMessage('error', 'Error del Sistema', 'Error al procesar la planilla digital: ' . $e->getMessage());
+            $this->redirect('dashboard.php', $trip_id ? ['odt' => $trip_id] : []);
         }
     }
 

@@ -170,7 +170,7 @@ function getMonthName($m)
                                             'lavado' => 'Lavado',
                                             'montaje_llantas' => 'Montaje Llantas',
                                             'bascula' => 'Báscula',
-                                            'engrace' => 'Engrase',
+                                            'engrace' => 'Engrace',
                                             'comision' => 'Comisión',
                                             'parqueadero' => 'Parqueadero',
                                             'papeleria' => 'Papelería',

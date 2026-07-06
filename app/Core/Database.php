@@ -42,12 +42,15 @@ class Database
     {
         // Load configuration from environment or config file
         $host = self::$config['host'] ?? getenv('DB_HOST') ?: 'localhost';
+        $port = self::$config['port'] ?? getenv('DB_PORT') ?: '3306';
         $dbname = self::$config['dbname'] ?? getenv('DB_NAME') ?: 'celr_app';
         $username = self::$config['username'] ?? getenv('DB_USER') ?: 'root';
         $password = self::$config['password'] ?? getenv('DB_PASS') ?: '';
         $charset = self::$config['charset'] ?? 'utf8mb4';
+        $ssl = filter_var(self::$config['ssl'] ?? getenv('DB_SSL') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+        $sslCa = self::$config['ssl_ca'] ?? getenv('DB_SSL_CA') ?: '';
         
-        $dsn = "mysql:host={$host};dbname={$dbname};charset={$charset}";
+        $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset={$charset}";
         
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -56,6 +59,21 @@ class Database
             PDO::ATTR_STRINGIFY_FETCHES => false,
             PDO::ATTR_PERSISTENT => true
         ];
+        
+        if ($ssl) {
+            $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+            if ($sslCa) {
+                if (file_exists($sslCa)) {
+                    $options[PDO::MYSQL_ATTR_SSL_CA] = $sslCa;
+                } elseif (str_contains($sslCa, '-----BEGIN')) {
+                    $certPath = sys_get_temp_dir() . '/ca-celr.pem';
+                    if (!file_exists($certPath)) {
+                        file_put_contents($certPath, $sslCa, LOCK_EX);
+                    }
+                    $options[PDO::MYSQL_ATTR_SSL_CA] = $certPath;
+                }
+            }
+        }
         
         try {
             self::$instance = new PDO($dsn, $username, $password, $options);

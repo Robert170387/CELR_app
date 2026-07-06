@@ -30,12 +30,12 @@ if ($editMode) {
         'flete_pactado' => '', 'anticipo' => '', 'saldo' => '',
         'cargue_pagado_por' => '', 'descargue_pagado_por' => '',
         'lugar_pago' => '', 'fecha_pago_saldo' => '',
-        'estado' => 'Activo', 'notas' => '',
+        'estado' => 'Activo', 'notas' => '', 'manifest_file' => '',
     ];
 }
 
 $vehicles = $pdo->query("SELECT id, placa FROM vehicles WHERE active=1 ORDER BY placa")->fetchAll();
-$drivers  = $pdo->query("SELECT id, CONCAT(firstname,' ',IFNULL(lastname,'')) AS nombre FROM personnel WHERE active=1 AND role='conductor' ORDER BY firstname")->fetchAll();
+$drivers  = $pdo->query("SELECT id, CONCAT(firstname,' ',IFNULL(lastname,'')) AS nombre FROM personnel WHERE active=1 AND type='Conductor' ORDER BY firstname")->fetchAll();
 $trips_list = $pdo->query("SELECT t.id, v.placa, t.date_load, t.origin, t.destination FROM trips t LEFT JOIN vehicles v ON v.id=t.vehicle_id ORDER BY t.date_load DESC LIMIT 200")->fetchAll();
 
 $msg = $_GET['msg'] ?? '';
@@ -59,7 +59,7 @@ $msg = $_GET['msg'] ?? '';
         </div>
     <?php endif; ?>
 
-    <form action="save_rndc.php" method="POST" class="space-y-6">
+    <form action="save_rndc.php" method="POST" enctype="multipart/form-data" class="space-y-6">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
         <input type="hidden" name="rndc_id"   value="<?php echo $rndcId; ?>">
 
@@ -360,6 +360,22 @@ $msg = $_GET['msg'] ?? '';
                       placeholder="Observaciones, instrucciones especiales..."><?php echo htmlspecialchars($r['notas'] ?? ''); ?></textarea>
         </div>
 
+        <!-- ⑨ Archivo -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-sm font-bold text-blue-700 uppercase tracking-wide mb-4 border-b pb-2">⑨ Archivo del Manifiesto</h3>
+            <?php if (!empty($r['manifest_file'])): ?>
+                <p class="mb-2">
+                    <a href="<?php echo htmlspecialchars($r['manifest_file']); ?>" target="_blank" class="text-blue-600 hover:underline text-sm">
+                        📄 Ver archivo actual
+                    </a>
+                </p>
+            <?php endif; ?>
+            <input type="file" name="manifest_file" accept=".pdf,.jpg,.jpeg,.png"
+                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            <input type="hidden" name="existing_manifest_file" value="<?php echo htmlspecialchars($r['manifest_file'] ?? ''); ?>">
+            <p class="mt-1 text-xs text-gray-400">Formatos permitidos: PDF, JPG, PNG.</p>
+        </div>
+
         <!-- Botones -->
         <div class="flex justify-end gap-3">
             <a href="rndc.php" class="px-5 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">Cancelar</a>
@@ -388,6 +404,98 @@ function autoFillTrip(sel) {
 }
 
 calcSaldo();
+
+// ── Autoguardado (Borrador) ────────────────────────────────────
+(function() {
+    const STORAGE_KEY = 'rndc_draft_' + (<?php echo $rndcId ?: 0; ?>);
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    <?php if (!$editMode): ?>
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            const banner = document.createElement('div');
+            banner.id = 'draft-banner';
+            banner.style.cssText = 'background:#fef3c7;border:1px solid #f59e0b;color:#92400e;padding:12px 16px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;font-size:14px;';
+            banner.innerHTML = '<span>\u{1F4DD} Borrador encontrado del ' + new Date(data._savedAt).toLocaleString() + '</span>' +
+                '<span>' +
+                '<button id="restore-draft" style="background:#f59e0b;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;margin-right:6px;">Restaurar</button>' +
+                '<button id="discard-draft" style="background:transparent;color:#92400e;border:1px solid #f59e0b;padding:6px 14px;border-radius:4px;cursor:pointer;">Descartar</button>' +
+                '</span>';
+            form.parentNode.insertBefore(banner, form);
+
+            document.getElementById('restore-draft').addEventListener('click', function() {
+                for (const key in data) {
+                    if (key === '_savedAt') continue;
+                    const el = form.querySelector('[name="' + key + '"]');
+                    if (el) {
+                        if (el.type === 'checkbox') {
+                            el.checked = data[key] === true || data[key] === '1';
+                        } else if (el.type === 'radio') {
+                            if (el.value === data[key]) el.checked = true;
+                        } else if (el.type !== 'file') {
+                            el.value = data[key];
+                        }
+                    }
+                }
+                banner.remove();
+                calcSaldo();
+            });
+            document.getElementById('discard-draft').addEventListener('click', function() {
+                localStorage.removeItem(STORAGE_KEY);
+                banner.remove();
+            });
+        } catch(e) {}
+    }
+    <?php endif; ?>
+
+    function saveDraft() {
+        const data = {};
+        const els = form.querySelectorAll('[name]');
+        for (const el of els) {
+            if (el.type === 'submit' || el.type === 'file' || el.type === 'hidden') continue;
+            if (el.name === 'csrf_token') continue;
+            if (el.type === 'checkbox') {
+                data[el.name] = el.checked;
+            } else if (el.type === 'radio') {
+                if (el.checked) data[el.name] = el.value;
+            } else {
+                data[el.name] = el.value;
+            }
+        }
+        data._savedAt = new Date().toISOString();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+        let indicator = document.getElementById('draft-indicator');
+        if (!indicator) {
+            indicator = document.createElement('span');
+            indicator.id = 'draft-indicator';
+            indicator.style.cssText = 'position:fixed;bottom:12px;right:12px;background:#374151;color:#fff;font-size:11px;padding:4px 10px;border-radius:4px;z-index:9999;opacity:0.7;transition:opacity 0.3s;';
+            indicator.textContent = '\u{1F4BE} Borrador guardado';
+            document.body.appendChild(indicator);
+        }
+        indicator.style.opacity = '1';
+        clearTimeout(indicator._hideTimer);
+        indicator._hideTimer = setTimeout(function() { indicator.style.opacity = '0'; }, 3000);
+    }
+
+    let hasChanges = false;
+    form.addEventListener('input', function() { hasChanges = true; });
+    form.addEventListener('change', function() { hasChanges = true; });
+    setInterval(function() {
+        if (hasChanges) { saveDraft(); hasChanges = false; }
+    }, 5000);
+
+    window.addEventListener('beforeunload', function() {
+        saveDraft();
+    });
+
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'saved'): ?>
+    localStorage.removeItem(STORAGE_KEY);
+    <?php endif; ?>
+})();
 </script>
 
 <?php include 'includes/footer.php'; ?>

@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/security_utils.php';
+requireInternalToolAccess();
+
 require_once 'includes/db.php';
 try {
     $stmt = $pdo->query("SELECT * FROM users");

@@ -1,6 +1,6 @@
 <?php
 include 'includes/db.php';
-include 'includes/header.php';
+include 'includes/functions.php';
 
 // Handle Delete (Soft Delete)
 if (isset($_GET['delete'])) {
@@ -13,18 +13,59 @@ if (isset($_GET['delete'])) {
 
 // Handle Form Submit (Add or Update)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = $_POST['name'];
+    $name = trim($_POST['name'] ?? '');
     $id = $_POST['id'] ?? null;
 
-    if ($id) {
-        // Update
-        $stmt = $pdo->prepare("UPDATE manifest_companies SET name = ? WHERE id = ?");
-        $stmt->execute([$name, $id]);
-    } else {
-        // Create
-        if ($name) {
-            $stmt = $pdo->prepare("INSERT INTO manifest_companies (name, active) VALUES (?, 1)");
-            $stmt->execute([$name]);
+    if ($name !== '') {
+        if ($id) {
+            // Update
+            $checkStmt = $pdo->prepare("SELECT * FROM manifest_companies WHERE name = ? AND id != ?");
+            $checkStmt->execute([$name, $id]);
+            $existing = $checkStmt->fetch();
+
+            if ($existing) {
+                header("Location: manifest_companies.php?edit=$id&error=duplicate");
+                exit;
+            } else {
+                try {
+                    $stmt = $pdo->prepare("UPDATE manifest_companies SET name = ? WHERE id = ?");
+                    $stmt->execute([$name, $id]);
+                } catch (PDOException $e) {
+                    if ($e->getCode() == 23000) {
+                        header("Location: manifest_companies.php?edit=$id&error=duplicate");
+                        exit;
+                    } else {
+                        throw $e;
+                    }
+                }
+            }
+        } else {
+            // Create
+            $checkStmt = $pdo->prepare("SELECT * FROM manifest_companies WHERE name = ?");
+            $checkStmt->execute([$name]);
+            $existing = $checkStmt->fetch();
+
+            if ($existing) {
+                if ($existing['active'] == 0) {
+                    $reactivateStmt = $pdo->prepare("UPDATE manifest_companies SET active = 1 WHERE id = ?");
+                    $reactivateStmt->execute([$existing['id']]);
+                } else {
+                    header("Location: manifest_companies.php?error=duplicate");
+                    exit;
+                }
+            } else {
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO manifest_companies (name, active) VALUES (?, 1)");
+                    $stmt->execute([$name]);
+                } catch (PDOException $e) {
+                    if ($e->getCode() == 23000) {
+                        header("Location: manifest_companies.php?error=duplicate");
+                        exit;
+                    } else {
+                        throw $e;
+                    }
+                }
+            }
         }
     }
     header("Location: manifest_companies.php");
@@ -41,9 +82,18 @@ if (isset($_GET['edit'])) {
 
 // Fetch list of active items
 $companies = $pdo->query("SELECT * FROM manifest_companies WHERE active = 1 ORDER BY name ASC")->fetchAll();
+
+include 'includes/header.php';
 ?>
 
 <div class="max-w-4xl mx-auto py-6 px-4">
+    <?php if (isset($_GET['error']) && $_GET['error'] === 'duplicate'): ?>
+        <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Error:</strong>
+            <span class="block sm:inline">Ya existe una empresa de manifiesto con ese nombre.</span>
+        </div>
+    <?php endif; ?>
+
     <div class="md:grid md:grid-cols-3 md:gap-6">
         <div class="md:col-span-1">
             <h3 class="text-lg font-medium leading-6 text-gray-900">Empresas de Manifiesto</h3>

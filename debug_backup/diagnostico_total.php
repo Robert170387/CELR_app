@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/security_utils.php';
+requireInternalToolAccess();
+
 /**
  * DIAGNÓSTICO EXTREMO DEL SISTEMA
  * Verifica todo lo que pueda estar causando el problema

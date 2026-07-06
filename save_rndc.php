@@ -27,6 +27,24 @@ if (!$nro || !$fecha) {
     exit;
 }
 
+// --- File Upload Handling ---
+$manifest_file_path = null;
+if (isset($_FILES['manifest_file']) && $_FILES['manifest_file']['error'] === UPLOAD_ERR_OK) {
+    $upload_dir = 'uploads/manifests/';
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0777, true);
+    }
+    $file_ext = pathinfo($_FILES['manifest_file']['name'], PATHINFO_EXTENSION);
+    $file_name = 'rndc_' . time() . '_' . uniqid() . '.' . $file_ext;
+    $manifest_file_path = $upload_dir . $file_name;
+    move_uploaded_file($_FILES['manifest_file']['tmp_name'], $manifest_file_path);
+} elseif ($rndcId > 0) {
+    // Keep existing file if no new upload
+    $stmtOld = $pdo->prepare("SELECT manifest_file FROM manifiestos_rndc WHERE id = ?");
+    $stmtOld->execute([$rndcId]);
+    $manifest_file_path = $stmtOld->fetchColumn() ?: null;
+}
+
 $fields = [
     $s('nro_manifiesto'),
     $s('autorizacion_rndc'),
@@ -63,6 +81,7 @@ $fields = [
     $s('fecha_pago_saldo'),
     $s('estado') ?? 'Activo',
     $s('notas'),
+    $manifest_file_path,
 ];
 
 if ($rndcId > 0) {
@@ -80,7 +99,7 @@ if ($rndcId > 0) {
         flete_pactado=?, anticipo=?, saldo=?,
         cargue_pagado_por=?, descargue_pagado_por=?,
         lugar_pago=?, fecha_pago_saldo=?,
-        estado=?, notas=?
+        estado=?, notas=?, manifest_file=?
         WHERE id=?");
     $stmt->execute(array_merge($fields, [$rndcId]));
 } else {
@@ -98,8 +117,8 @@ if ($rndcId > 0) {
         flete_pactado, anticipo, saldo,
         cargue_pagado_por, descargue_pagado_por,
         lugar_pago, fecha_pago_saldo,
-        estado, notas
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        estado, notas, manifest_file
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     $stmt->execute($fields);
     $rndcId = (int)$pdo->lastInsertId();
 }

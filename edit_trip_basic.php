@@ -219,6 +219,7 @@ $msg = $_GET['msg'] ?? '';
                 <label>Estado</label>
                 <select name="status">
                     <option value="En Progreso" <?php echo isSelected('En Progreso', $trip['status']); ?>>En Progreso</option>
+                    <option value="Entregado" <?php echo isSelected('Entregado', $trip['status']); ?>>Entregado</option>
                     <option value="Finalizado" <?php echo isSelected('Finalizado', $trip['status']); ?>>Finalizado</option>
                     <option value="Cancelado" <?php echo isSelected('Cancelado', $trip['status']); ?>>Cancelado</option>
                 </select>
@@ -272,7 +273,7 @@ $msg = $_GET['msg'] ?? '';
             </div>
             
             <div class="form-group">
-                <label>Cliente *</label>
+                <label>Empresa Manifiesto *</label>
                 <select name="client_id" required>
                     <option value="">-- Seleccione --</option>
                     <?php foreach ($clients as $c): ?>
@@ -377,6 +378,12 @@ $msg = $_GET['msg'] ?? '';
                 <label>Fecha de Descarga</label>
                 <input type="date" name="date_unload" 
                        value="<?php echo $trip['date_unload']; ?>">
+            </div>
+            
+            <div class="form-group">
+                <label>Fecha del Manifiesto</label>
+                <input type="date" name="manifest_date" 
+                       value="<?php echo $trip['manifest_date']; ?>">
             </div>
         </div>
         

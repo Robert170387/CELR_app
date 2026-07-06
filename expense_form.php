@@ -13,8 +13,7 @@ if (isset($_GET['id'])) {
 
 // Fetch lists for the form
 $vehicles = $pdo->query("SELECT * FROM vehicles WHERE active=1 ORDER BY placa ASC")->fetchAll();
-$categories_variable = $pdo->query("SELECT * FROM expense_categories WHERE type='variable' ORDER BY name ASC")->fetchAll();
-$categories_fixed = $pdo->query("SELECT * FROM expense_categories WHERE type='fixed' ORDER BY name ASC")->fetchAll();
+$parent_categories = $pdo->query("SELECT * FROM expense_categories WHERE parent_id IS NULL AND active = 1 ORDER BY FIELD(type, 'viaje', 'vehiculo_fijo', 'administrativo', 'especial'), sort_order ASC, name ASC")->fetchAll();
 $suppliers = $pdo->query("SELECT * FROM suppliers ORDER BY created_at DESC")->fetchAll();
 $all_personnel = $pdo->query("SELECT id, firstname, lastname FROM personnel WHERE active=1 ORDER BY firstname ASC")->fetchAll();
 
@@ -64,7 +63,7 @@ $trips = $pdo->query("SELECT id, origin, destination, date_load, vehicle_id FROM
 $trips_json = json_encode($trips);
 $states_json = json_encode($all_states);
 $cities_json = json_encode($all_cities);
-$operational_slugs = array_values(array_map(fn($c) => $c['slug'], array_filter($categories_variable, fn($c) => $c['slug'] !== 'combustible')));
+$operational_slugs = $pdo->query("SELECT child.slug FROM expense_categories child JOIN expense_categories parent ON child.parent_id = parent.id WHERE parent.type = 'viaje' AND child.slug != 'combustible' ORDER BY parent.sort_order ASC, parent.name ASC, child.sort_order ASC, child.name ASC")->fetchAll(PDO::FETCH_COLUMN);
 $operational_slugs_json = json_encode($operational_slugs);
 ?>
 <?php ?>
@@ -80,7 +79,15 @@ $operational_slugs_json = json_encode($operational_slugs);
     <!-- Workflow Header if applicable -->
     <?php
     if ($trip_id_preselected) {
-        $step = (($_GET['category'] ?? '') === 'combustible' || ($expense['category'] ?? '') === 'combustible') ? 3 : 4;
+        $isFuel = false;
+        if ($expense && !empty($expense['category_id'])) {
+            $stmtFu = $pdo->prepare("SELECT slug FROM expense_categories WHERE id = ?");
+            $stmtFu->execute([$expense['category_id']]);
+            $isFuel = ($stmtFu->fetchColumn() === 'combustible');
+        } elseif (isset($_GET['category'])) {
+            $isFuel = ($_GET['category'] === 'combustible');
+        }
+        $step = $isFuel ? 3 : 4;
         renderWorkflowHeader($step, $trip_id_preselected);
     }
     ?>
@@ -137,24 +144,27 @@ $operational_slugs_json = json_encode($operational_slugs);
 
                     <!-- Categoría -->
                     <div class="col-span-1 sm:col-span-2">
-                        <label class="form-label form-label-required">Categoría del Gasto</label>
-                        <select name="category" x-model="formData.category" @change="onCategoryChange()"
+                        <label class="form-label form-label-required" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Categoría del Gasto</span>
+                            <a href="category_form.php" target="_blank" style="font-size: 11px; color: #3498db; text-decoration: none; font-weight: normal;" title="Crear nueva Categoría">+ Crear Nueva</a>
+                        </label>
+                        <select name="category_id" x-model="formData.category_id" @change="onCategoryChange()"
                             class="form-select">
                             <option value="">-- Seleccione Categoría --</option>
-                            <optgroup label="Operativos (Viaje)">
-                                <?php foreach ($categories_variable as $cat): ?>
-                                    <option value="<?php echo $cat['slug']; ?>" <?php echo (($expense['category'] ?? '') == $cat['slug']) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($cat['name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </optgroup>
-                            <optgroup label="Mantenimiento/Fijos">
-                                <?php foreach ($categories_fixed as $cat): ?>
-                                    <option value="<?php echo $cat['slug']; ?>" <?php echo (($expense['category'] ?? '') == $cat['slug']) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($cat['name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </optgroup>
+                            <?php foreach ($parent_categories as $pcat): 
+                                $stmt = $pdo->prepare("SELECT * FROM expense_categories WHERE parent_id = ? AND active = 1 ORDER BY sort_order ASC, name ASC");
+                                $stmt->execute([$pcat['id']]);
+                                $children = $stmt->fetchAll();
+                                if (!empty($children)):
+                            ?>
+                                <optgroup label="<?php echo htmlspecialchars($pcat['name']); ?>">
+                                    <?php foreach ($children as $cat): ?>
+                                        <option value="<?php echo $cat['id']; ?>" <?php echo (($expense['category_id'] ?? '') == $cat['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($cat['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endif; endforeach; ?>
                         </select>
                     </div>
                 </div>
@@ -223,7 +233,10 @@ $operational_slugs_json = json_encode($operational_slugs);
                 <div class="form-grid form-grid-2">
                     <!-- Proveedor -->
                     <div>
-                        <label class="form-label">Proveedor</label>
+                        <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Proveedor</span>
+                            <a href="supplier_form.php" target="_blank" style="font-size: 11px; color: #3498db; text-decoration: none; font-weight: normal;" title="Crear nuevo Proveedor">+ Crear Nuevo</a>
+                        </label>
                         <select name="supplier_id" x-model="formData.supplier_id"
                             @change="onSupplierChange()" class="form-select">
                             <option value="">-- Seleccione --</option>
@@ -443,7 +456,7 @@ $operational_slugs_json = json_encode($operational_slugs);
             formData: {
                 date: <?php echo json_encode($expense['date'] ?? date('Y-m-d')); ?>,
                 vehicle_id: <?php echo json_encode($expense['vehicle_id'] ?? ''); ?>,
-                category: <?php echo json_encode($expense['category'] ?? ''); ?>,
+                category_id: <?php echo json_encode($expense['category_id'] ?? ''); ?>,
                 trip_id: <?php echo json_encode($expense['trip_id'] ?? $trip_id_preselected ?? ''); ?>,
                 paid_by: <?php echo json_encode($expense['paid_by'] ?? 'Conductor'); ?>,
                 amount: <?php echo json_encode($expense['amount'] ?? ''); ?>,
@@ -463,6 +476,14 @@ $operational_slugs_json = json_encode($operational_slugs);
             activeTripAlert: false,
             activeTripMessage: '',
             isOperationalRequired: false,
+            categoryMap: <?php 
+                $cat_rows = $pdo->query("SELECT id, slug, name FROM expense_categories WHERE active = 1")->fetchAll();
+                $cat_map = [];
+                foreach ($cat_rows as $r) {
+                    $cat_map[$r['id']] = ['slug' => $r['slug'], 'name' => $r['name']];
+                }
+                echo json_encode($cat_map); 
+            ?>,
             operationalSlugs: <?php echo $operational_slugs_json; ?>,
             trips: <?php echo $trips_json; ?>,
 
@@ -509,8 +530,11 @@ $operational_slugs_json = json_encode($operational_slugs);
             },
 
             onCategoryChange() {
-                this.isFuelCategory = (this.formData.category === 'combustible');
-                this.isOperationalRequired = this.operationalSlugs.includes(this.formData.category);
+                const catId = this.formData.category_id;
+                const catInfo = this.categoryMap[catId];
+                const catSlug = catInfo ? catInfo.slug : '';
+                this.isFuelCategory = (catSlug === 'combustible');
+                this.isOperationalRequired = this.operationalSlugs.includes(catSlug);
 
                 if (this.isFuelCategory) {
                     this.calculateFuelTotal();

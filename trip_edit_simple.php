@@ -210,6 +210,7 @@ $error = $_GET['error'] ?? '';
                     <label class="form-label">Estado</label>
                     <select name="status" class="form-select">
                         <option value="En Progreso" <?php echo $trip['status'] == 'En Progreso' ? 'selected' : ''; ?>>En Progreso</option>
+                        <option value="Entregado" <?php echo $trip['status'] == 'Entregado' ? 'selected' : ''; ?>>Entregado</option>
                         <option value="Finalizado" <?php echo $trip['status'] == 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
                         <option value="Cancelado" <?php echo $trip['status'] == 'Cancelado' ? 'selected' : ''; ?>>Cancelado</option>
                     </select>
@@ -227,7 +228,10 @@ $error = $_GET['error'] ?? '';
                 
                 <!-- Material -->
                 <div>
-                    <label class="form-label">Material</label>
+                    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Material</span>
+                        <a href="materials.php" target="_blank" style="font-size: 11px; color: #2563eb; text-decoration: none; font-weight: normal;" title="Crear nuevo Material">+ Crear Nuevo</a>
+                    </label>
                     <select name="material_id" class="form-select">
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($materials as $m): ?>
@@ -240,7 +244,10 @@ $error = $_GET['error'] ?? '';
                 
                 <!-- Vehículo -->
                 <div>
-                    <label class="form-label form-label-required">Vehículo</label>
+                    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Vehículo <span style="color: #ef4444;">*</span></span>
+                        <a href="vehicle_form.php" target="_blank" style="font-size: 11px; color: #2563eb; text-decoration: none; font-weight: normal;" title="Crear nuevo Vehículo">+ Crear Nuevo</a>
+                    </label>
                     <select name="vehicle_id" required class="form-select">
                         <option value="">-- Seleccione Vehículo --</option>
                         <?php foreach ($vehicles as $v): ?>
@@ -253,7 +260,10 @@ $error = $_GET['error'] ?? '';
                 
                 <!-- Conductor -->
                 <div>
-                    <label class="form-label form-label-required">Conductor</label>
+                    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Conductor <span style="color: #ef4444;">*</span></span>
+                        <a href="personnel_form.php" target="_blank" style="font-size: 11px; color: #2563eb; text-decoration: none; font-weight: normal;" title="Crear nuevo Conductor">+ Crear Nuevo</a>
+                    </label>
                     <select name="driver_id" required class="form-select">
                         <option value="">-- Seleccione Conductor --</option>
                         <?php foreach ($drivers as $d): ?>
@@ -266,9 +276,12 @@ $error = $_GET['error'] ?? '';
                 
                 <!-- Cliente -->
                 <div>
-                    <label class="form-label form-label-required">Cliente</label>
+                    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Empresa Manifiesto <span style="color: #ef4444;">*</span></span>
+                        <a href="client_form.php" target="_blank" style="font-size: 11px; color: #2563eb; text-decoration: none; font-weight: normal;" title="Crear nueva Empresa Manifiesto">+ Crear Nueva</a>
+                    </label>
                     <select name="client_id" required class="form-select">
-                        <option value="">-- Seleccione Cliente --</option>
+                        <option value="">-- Seleccione Empresa Manifiesto --</option>
                         <?php foreach ($clients as $c): ?>
                             <option value="<?php echo $c['id']; ?>" <?php echo $trip['client_id'] == $c['id'] ? 'selected' : ''; ?>>
                                 <?php 
@@ -389,6 +402,11 @@ $error = $_GET['error'] ?? '';
                     <label class="form-label">Fecha de Descarga</label>
                     <input type="date" name="date_unload" class="form-input" 
                            value="<?php echo $trip['date_unload']; ?>">
+                </div>
+                <div>
+                    <label class="form-label">Fecha del Manifiesto</label>
+                    <input type="date" name="manifest_date" class="form-input" 
+                           value="<?php echo $trip['manifest_date']; ?>">
                 </div>
             </div>
         </div>
@@ -584,7 +602,7 @@ $error = $_GET['error'] ?? '';
                 <label class="form-label">Estado de Liquidación</label>
                 <select name="settlement_status" class="form-select" style="max-width: 300px;">
                     <option value="Pending" <?php echo ($trip['settlement_status'] ?? 'Pending') == 'Pending' ? 'selected' : ''; ?>>⏳ Pendiente</option>
-                    <option value="Settled" <?php echo ($trip['settlement_status'] ?? '') == 'Settled' ? 'selected' : ''; ?>>✅ Liquidado</option>
+                    <option value="Complete" <?php echo ($trip['settlement_status'] ?? '') == 'Complete' ? 'selected' : ''; ?>>✅ Liquidado</option>
                 </select>
             </div>
         </div>

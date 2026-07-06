@@ -1,10 +1,17 @@
 <?php
 require_once 'includes/db.php';
+require_once 'includes/auth.php';
 require_once 'includes/functions.php';
+require_once 'includes/security_utils.php';
 
-session_start();
+if (!isAuthenticated()) {
+    header("Location: login.php");
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    validateCsrfToken();
+
     $schedule_id = $_POST['schedule_id'];
     $performed_date = $_POST['performed_date'];
     $performed_at_kms = $_POST['performed_at_kms'];
@@ -13,15 +20,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notes = $_POST['notes'];
 
     $receipt_photo_path = null;
-    if (isset($_FILES['receipt_photo']) && $_FILES['receipt_photo']['error'] === 0) {
-        $upload_dir = 'uploads/maintenance/';
-        if (!is_dir($upload_dir))
-            mkdir($upload_dir, 0777, true);
-
-        $file_ext = pathinfo($_FILES['receipt_photo']['name'], PATHINFO_EXTENSION);
-        $filename = 'maint_' . time() . '_' . uniqid() . '.' . $file_ext;
-        move_uploaded_file($_FILES['receipt_photo']['tmp_name'], $upload_dir . $filename);
-        $receipt_photo_path = $upload_dir . $filename;
+    try {
+        $receipt_photo_path = safeUploadFile(
+            $_FILES['receipt_photo'] ?? ['error' => UPLOAD_ERR_NO_FILE],
+            'uploads/maintenance/',
+            [
+                'jpg' => ['image/jpeg'],
+                'jpeg' => ['image/jpeg'],
+                'png' => ['image/png'],
+                'webp' => ['image/webp'],
+            ],
+            'maint',
+            5242880
+        );
+    } catch (RuntimeException $e) {
+        header("Location: maintenance_list.php?error=" . urlencode($e->getMessage()));
+        exit;
     }
 
     try {

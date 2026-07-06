@@ -7,6 +7,12 @@
 // Define application environment: 'development' or 'production'
 define('APP_ENV', getenv('APP_ENV') ?: 'development');
 
+// Create logs directory if it doesn't exist
+$logsDir = __DIR__ . '/../logs';
+if (!is_dir($logsDir)) {
+    mkdir($logsDir, 0755, true);
+}
+
 // Security settings based on environment
 if (APP_ENV === 'production') {
     // Production: Hide all errors
@@ -46,11 +52,13 @@ function setSecurityHeaders() {
 setSecurityHeaders();
 
 // Session security settings
-ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 1 : 0);
-ini_set('session.use_strict_mode', 1);
-ini_set('session.cookie_samesite', 'Strict');
-ini_set('session.gc_maxlifetime', 3600); // 1 hour
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 1 : 0);
+    ini_set('session.use_strict_mode', 1);
+    ini_set('session.cookie_samesite', 'Strict');
+    ini_set('session.gc_maxlifetime', 3600); // 1 hour
+}
 
 /**
  * Custom error handler for production

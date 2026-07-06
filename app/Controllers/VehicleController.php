@@ -21,6 +21,9 @@ class VehicleController extends Controller
             $this->redirect('vehicles.php');
         }
 
+        // CSRF Validation
+        validateCsrfToken();
+
         // --- VALIDATION LAYER ---
         $rules = [
             'placa' => 'string',
@@ -80,7 +83,6 @@ class VehicleController extends Controller
             'ownership_type' => $_POST['ownership_type'] ?? 'Propio',
             'partner_id' => !empty($_POST['partner_id']) ? $_POST['partner_id'] : null,
             'partner_percentage' => !empty($_POST['partner_percentage']) ? $_POST['partner_percentage'] : 0,
-            'satrack_id' => $_POST['satrack_id'] ?? null,
         ];
     }
 
@@ -93,8 +95,8 @@ class VehicleController extends Controller
             displacement, max_load, 
             register_city, register_department, register_country, 
             expiry_soat, expiry_tecno, expiry_policy,
-            default_driver_id, ownership_type, partner_id, partner_percentage, active, satrack_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            default_driver_id, ownership_type, partner_id, partner_percentage, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -119,8 +121,7 @@ class VehicleController extends Controller
             $data['ownership_type'],
             $data['partner_id'],
             $data['partner_percentage'],
-            $data['active'],
-            $data['satrack_id']
+            $data['active']
         ]);
 
         $id = $this->pdo->lastInsertId();
@@ -139,7 +140,7 @@ class VehicleController extends Controller
             expiry_soat=?, expiry_tecno=?, expiry_policy=?,
             default_driver_id=?,
             ownership_type=?, partner_id=?, partner_percentage=?,
-            active=?, satrack_id=? 
+            active=?
             WHERE id=?";
 
         $stmt = $this->pdo->prepare($sql);
@@ -166,7 +167,6 @@ class VehicleController extends Controller
             $data['partner_id'],
             $data['partner_percentage'],
             $data['active'],
-            $data['satrack_id'],
             $data['id']
         ]);
 

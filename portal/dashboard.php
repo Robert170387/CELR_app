@@ -231,7 +231,7 @@ if ($role === 'conductor' && $personnelId) {
                             $quickExpenses = [
                                 'peajes' => 'Peajes',
                                 'lavado' => 'Lavado',
-                                'engrase' => 'Engrase',
+                                'engrace' => 'Engrace',
                                 'bascula' => 'Báscula'
                             ];
                             foreach ($quickExpenses as $slug => $label): ?>
@@ -269,7 +269,7 @@ if ($role === 'conductor' && $personnelId) {
                 <div class="border-t border-slate-100 pt-6 mt-8">
                     <label
                         class="flex items-start gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer mb-6 hover:bg-slate-100 transition-colors">
-                        <input type="checkbox" name="status" value="En Destino"
+                        <input type="checkbox" name="status" value="Entregado"
                             class="mt-1 w-5 h-5 text-brand-600 border-gray-300 rounded focus:ring-brand-500">
                         <div>
                             <span class="block text-sm font-bold text-slate-900">NOTIFICAR LLEGADA A DESTINO</span>

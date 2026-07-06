@@ -69,11 +69,11 @@ switch ($modulo) {
         $params = [];
         $where  = "WHERE 1=1";
         if (!empty($_GET['vehicle_id'])) { $where .= " AND e.vehicle_id = ?"; $params[] = (int)$_GET['vehicle_id']; }
-        if (!empty($_GET['category']))   { $where .= " AND e.category = ?";   $params[] = $_GET['category']; }
+        if (!empty($_GET['category']))   { $where .= " AND e.category_id = (SELECT id FROM expense_categories WHERE slug = ?)"; $params[] = $_GET['category']; }
         if (!empty($_GET['fecha_desde'])){ $where .= " AND e.expense_date >= ?"; $params[] = $_GET['fecha_desde']; }
         if (!empty($_GET['fecha_hasta'])) { $where .= " AND e.expense_date <= ?"; $params[] = $_GET['fecha_hasta']; }
 
-        $sql = "SELECT e.expense_date, v.placa, e.category, e.description,
+        $sql = "SELECT e.expense_date, v.placa, e.category_name AS category, e.description,
                        e.amount, e.payment_method, e.supplier_name
                 FROM expenses e
                 LEFT JOIN vehicles v ON v.id = e.vehicle_id

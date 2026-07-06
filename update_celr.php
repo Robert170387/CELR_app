@@ -475,7 +475,8 @@ $logoPath = $appConfig['logo_path'] ?? null;
                 'children' => [
                     ['name' => 'Talleres',              'url' => 'talleres.php'],
                     ['name' => 'Proveedores',           'url' => 'suppliers.php'],
-                    ['name' => 'Clientes',              'url' => 'clients.php'],
+                    ['name' => 'Empresa Manifiesto',     'url' => 'clients.php'],
+                    ['name' => 'Clientes',              'url' => 'manifest_companies.php'],
                     ['name' => 'Socios / Propietarios', 'url' => 'socios.php'],
                 ]
             ],
@@ -484,7 +485,7 @@ $logoPath = $appConfig['logo_path'] ?? null;
 
         $configChildren = [
             ['name' => 'General', 'url' => 'config.php', 'icon' => 'adjustments'],
-            ['name' => 'Clientes', 'url' => 'clients.php', 'icon' => 'user-circle'],
+            ['name' => 'Empresa Manifiesto', 'url' => 'clients.php', 'icon' => 'user-circle'],
             ['name' => 'Proveedores', 'url' => 'suppliers.php', 'icon' => 'briefcase'],
             ['name' => 'Vehículos', 'url' => 'vehicles.php', 'icon' => 'cog'],
             ['name' => 'Personal', 'url' => 'personnel.php', 'icon' => 'users'],
@@ -519,7 +520,8 @@ $logoPath = $appConfig['logo_path'] ?? null;
                         (str_contains($child['url'], 'taller') && str_contains($current_page, 'taller')) ||
                         (str_contains($child['url'], 'rndc') && str_contains($current_page, 'rndc')) ||
                         (str_contains($child['url'], 'socio') && str_contains($current_page, 'socio')) ||
-                        (str_contains($child['url'], 'retenciones') && str_contains($current_page, 'retenciones'))
+                        (str_contains($child['url'], 'retenciones') && str_contains($current_page, 'retenciones')) ||
+                        (str_contains($child['url'], 'manifest_companies') && str_contains($current_page, 'manifest_companies'))
                     ) {
                         $isChildActive = true;
                         break;
@@ -2296,13 +2298,13 @@ function buildData(PDO $pdo, string $modulo): array {
             $params = [];
             $where  = "WHERE 1=1";
             if (!empty($_GET['vehicle_id'])) { $where .= " AND e.vehicle_id = ?"; $params[] = (int)$_GET['vehicle_id']; }
-            if (!empty($_GET['category']))   { $where .= " AND e.category = ?";   $params[] = $_GET['category']; }
+            if (!empty($_GET['category']))   { $where .= " AND e.category_id = (SELECT id FROM expense_categories WHERE slug = ?)"; $params[] = $_GET['category']; }
             if (!empty($_GET['fecha_desde'])){ $where .= " AND e.expense_date >= ?"; $params[] = $_GET['fecha_desde']; }
             if (!empty($_GET['fecha_hasta'])) { $where .= " AND e.expense_date <= ?"; $params[] = $_GET['fecha_hasta']; }
 
             $sql = "SELECT e.id, e.expense_date, v.placa,
                            CONCAT(p.firstname,' ',IFNULL(p.lastname,'')) AS conductor,
-                           e.category, e.description,
+                           e.category_name AS category, e.description,
                            e.amount, e.payment_method, e.supplier_name,
                            e.trip_id, e.notes
                     FROM expenses e
@@ -2749,11 +2751,11 @@ switch ($modulo) {
         $params = [];
         $where  = "WHERE 1=1";
         if (!empty($_GET['vehicle_id'])) { $where .= " AND e.vehicle_id = ?"; $params[] = (int)$_GET['vehicle_id']; }
-        if (!empty($_GET['category']))   { $where .= " AND e.category = ?";   $params[] = $_GET['category']; }
+        if (!empty($_GET['category']))   { $where .= " AND e.category_id = (SELECT id FROM expense_categories WHERE slug = ?)"; $params[] = $_GET['category']; }
         if (!empty($_GET['fecha_desde'])){ $where .= " AND e.expense_date >= ?"; $params[] = $_GET['fecha_desde']; }
         if (!empty($_GET['fecha_hasta'])) { $where .= " AND e.expense_date <= ?"; $params[] = $_GET['fecha_hasta']; }
 
-        $sql = "SELECT e.expense_date, v.placa, e.category, e.description,
+        $sql = "SELECT e.expense_date, v.placa, e.category_name AS category, e.description,
                        e.amount, e.payment_method, e.supplier_name
                 FROM expenses e
                 LEFT JOIN vehicles v ON v.id = e.vehicle_id
@@ -5783,8 +5785,7 @@ try {
     // Check if we need more fields in expenses for the "FORMATO 2025"
     $cols = $pdo->query("SHOW COLUMNS FROM expenses LIKE 'invoice_status'")->fetchAll(); if (!$cols) $pdo->exec("ALTER TABLE expenses ADD COLUMN invoice_status VARCHAR(50) DEFAULT 'Pendiente'");
 
-    // Satrack integration already added satrack_id to vehicles, 
-    // but let's ensure health metrics has what it needs.
+    // Ensure health metrics has what it needs.
 
     echo "Migration 041 completed: Schema optimized for Performance KPIs.<br>";
 

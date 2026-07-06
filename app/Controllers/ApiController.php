@@ -7,6 +7,7 @@ require_once __DIR__ . '/../Core/Controller.php';
 require_once __DIR__ . '/../Helpers/Audit.php';
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/functions.php'; // For auth check if needed
+require_once __DIR__ . '/../../includes/security_utils.php';
 
 use App\Core\Controller;
 use PDO;
@@ -29,6 +30,10 @@ class ApiController extends Controller
      */
     public function getLocations()
     {
+        if (!isLocalRequest()) {
+            $this->requireAuth();
+        }
+
         $action = $_GET['action'] ?? '';
 
         try {
@@ -78,30 +83,42 @@ class ApiController extends Controller
      */
     public function updateStatus()
     {
+        $this->requireRole(['Admin', 'Staff']);
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->jsonResponse(['error' => 'Method Not Allowed'], 405);
         }
 
-        // Basic Auth Check
-        if (!isset($_SESSION['user_id'])) {
-            $this->jsonResponse(['error' => 'No autorizado'], 403);
-        }
-
         $input = file_get_contents('php://input');
         $data = json_decode($input, true);
+        if (!is_array($data)) {
+            $this->jsonResponse(['error' => 'JSON invalido'], 400);
+        }
+
         $trip_id = $data['trip_id'] ?? null;
         $new_status = $data['status'] ?? null;
+        $csrfToken = $data['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
 
         if (!$trip_id || !$new_status) {
             $this->jsonResponse(['error' => 'Faltan datos'], 400);
         }
 
+        if (empty($csrfToken) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrfToken)) {
+            $this->jsonResponse(['error' => 'Token CSRF invalido'], 403);
+        }
+
+        $allowedStatuses = ['En Progreso', 'Entregado', 'Finalizado', 'Cancelado'];
+        if (!in_array($new_status, $allowedStatuses, true)) {
+            $this->jsonResponse(['error' => 'Estado invalido'], 422);
+        }
+
         try {
             $stmt = $this->pdo->prepare("UPDATE trips SET status = ? WHERE id = ?");
-            $stmt->execute([$new_status, $trip_id]);
+            $stmt->execute([$new_status, (int) $trip_id]);
             $this->jsonResponse(['success' => true]);
         } catch (PDOException $e) {
-            $this->jsonResponse(['error' => $e->getMessage()], 500);
+            error_log("Error updating trip status: " . $e->getMessage());
+            $this->jsonResponse(['error' => 'Error al actualizar el estado'], 500);
         }
     }
 
@@ -110,6 +127,8 @@ class ApiController extends Controller
      */
     public function getSettlementData()
     {
+        $this->requireRole(['Admin', 'Staff']);
+
         $personnel_id = $_GET['personnel_id'] ?? null;
         $date_start = $_GET['date_start'] ?? null;
         $date_end = $_GET['date_end'] ?? null;
@@ -132,7 +151,7 @@ class ApiController extends Controller
             $stmtTrips = $this->pdo->prepare("
                 SELECT t.id, t.trip_type, t.commission_value, t.advance_manifest, t.advance_owner, t.advance_manifest_to_driver, 
                        t.origin, t.destination, t.manifest_number, t.manifest_date, t.date_load, t.flete_neto,
-                       v.placa as vehicle_placa, mc.name as manifest_company_name, t.manifest_company as legacy_company,
+                       v.placa as vehicle_placa, mc.name as manifest_company_name,
                        CASE 
                            WHEN c.person_type = 'Jurídica' THEN c.business_name 
                            ELSE CONCAT(c.firstname, ' ', c.lastname1) 
@@ -183,7 +202,7 @@ class ApiController extends Controller
                     'date_load' => $t['date_load'],
                     'manifest_date' => $t['manifest_date'],
                     'vehicle' => $t['vehicle_placa'],
-                    'company' => $t['client_name'] ?: ($t['manifest_company_name'] ?: ($t['legacy_company'] ?: 'N/A')),
+                    'company' => $t['client_name'] ?: ($t['manifest_company_name'] ?: 'N/A'),
                     'manifest' => $t['manifest_number'],
                     'origin' => $t['origin'],
                     'destination' => $t['destination'],
@@ -406,6 +425,8 @@ class ApiController extends Controller
      */
     public function getVehicleLocations()
     {
+        $this->requireRole(['Admin', 'Staff']);
+
         try {
             // Fetch active vehicles
             $stmt = $this->pdo->query("SELECT id, placa, brand, model FROM vehicles WHERE active = 1");
@@ -442,58 +463,6 @@ class ApiController extends Controller
     }
 
     /**
-     * Fetches real-time locations from SATRACK API
-     */
-    public function fetchSatrackLocations()
-    {
-        try {
-            $stmtConf = $this->pdo->query("SELECT satrack_api_key, satrack_token, satrack_api_url FROM config LIMIT 1");
-            $config = $stmtConf->fetch();
-
-            $apiKey = $config['satrack_api_key'] ?? null;
-            $token = $config['satrack_token'] ?? null;
-            $apiUrl = $config['satrack_api_url'] ?? "https://api.satrack.com/v1/locations";
-
-            if (!$apiKey || !$token) {
-                return $this->jsonResponse(['success' => true, 'source' => 'SATRACK', 'locations' => [], 'message' => 'SATRACK no configurado']);
-            }
-
-            // SIMULATED RESPONSE for development
-            $satData = [
-                ['id' => 'SAT-001', 'lat' => 4.7110, 'lng' => -74.0721, 'status' => 'En Movimiento', 'speed' => 45, 'timestamp' => date('Y-m-d H:i:s')],
-                ['id' => 'SAT-002', 'lat' => 4.7210, 'lng' => -74.0821, 'status' => 'Detenido', 'speed' => 0, 'timestamp' => date('Y-m-d H:i:s')]
-            ];
-
-            $stmt = $this->pdo->query("SELECT id, placa, satrack_id, brand, model FROM vehicles WHERE satrack_id IS NOT NULL AND active = 1");
-            $internalVehicles = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $locations = [];
-            foreach ($internalVehicles as $v) {
-                foreach ($satData as $s) {
-                    if ($s['id'] == $v['satrack_id']) {
-                        $locations[] = [
-                            'id' => $v['id'],
-                            'placa' => $v['placa'],
-                            'details' => $v['brand'] . ' ' . $v['model'],
-                            'lat' => $s['lat'],
-                            'lng' => $s['lng'],
-                            'status' => $s['status'],
-                            'speed' => $s['speed'] . ' km/h',
-                            'last_update' => $s['timestamp']
-                        ];
-                        break;
-                    }
-                }
-            }
-
-            $this->jsonResponse(['success' => true, 'source' => 'SATRACK', 'locations' => $locations]);
-
-        } catch (Exception $e) {
-            $this->jsonResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
      * Triggers a database backup (Admin only)
      */
     public function triggerDatabaseBackup()
@@ -511,12 +480,14 @@ class ApiController extends Controller
             $return .= "-- Generated on: " . date('Y-m-d H:i:s') . "\n\n";
 
             foreach ($tables as $table) {
+                $quotedTable = '`' . str_replace('`', '``', $table) . '`';
+
                 // Get create table
-                $row2 = $this->pdo->query("SHOW CREATE TABLE $table")->fetch(PDO::FETCH_NUM);
-                $return .= "DROP TABLE IF EXISTS `$table`;\n" . $row2[1] . ";\n\n";
+                $row2 = $this->pdo->query("SHOW CREATE TABLE $quotedTable")->fetch(PDO::FETCH_NUM);
+                $return .= "DROP TABLE IF EXISTS $quotedTable;\n" . $row2[1] . ";\n\n";
 
                 // Get data
-                $result = $this->pdo->query("SELECT * FROM `$table`");
+                $result = $this->pdo->query("SELECT * FROM $quotedTable");
                 $num_fields = $result->columnCount();
 
                 while ($row = $result->fetch(PDO::FETCH_NUM)) {
@@ -541,7 +512,7 @@ class ApiController extends Controller
 
             $dir = 'uploads/backups/';
             if (!is_dir($dir))
-                mkdir($dir, 0777, true);
+                mkdir($dir, 0755, true);
 
             $filename = 'db_backup_' . date('Y-m-d_H-i-s') . '.sql';
             $filepath = $dir . $filename;
@@ -570,6 +541,8 @@ class ApiController extends Controller
      */
     public function getSystemAlerts()
     {
+        $this->requireAuth();
+
         try {
             $stmt = $this->pdo->query("SELECT * FROM system_alerts WHERE is_read = 0 ORDER BY created_at DESC LIMIT 10");
             $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -624,6 +597,8 @@ class ApiController extends Controller
 
     public function findActiveTrip()
     {
+        $this->requireRole(['Admin', 'Staff']);
+
         $vehicle_id = $_GET['vehicle_id'] ?? null;
         $date = $_GET['date'] ?? date('Y-m-d');
 
@@ -646,6 +621,44 @@ class ApiController extends Controller
             $this->jsonResponse(['error' => false, 'trip' => $trip]);
         } catch (Exception $e) {
             $this->jsonResponse(['error' => true, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getTripFinancials()
+    {
+        $this->requireRole(['Admin', 'Staff']);
+
+        $trip_id = $_GET['trip_id'] ?? null;
+        if (!$trip_id || !ctype_digit((string) $trip_id)) {
+            $this->jsonResponse(['error' => true, 'message' => 'Trip ID required'], 400);
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT id, flete_neto, final_pay_expected, commission_value, total_deductibles
+                FROM trips
+                WHERE id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([(int) $trip_id]);
+            $trip = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$trip) {
+                $this->jsonResponse(['error' => true, 'message' => 'Trip not found'], 404);
+            }
+
+            $stmtExpenses = $this->pdo->prepare("
+                SELECT COALESCE(SUM(amount), 0)
+                FROM expenses
+                WHERE trip_id = ? AND paid_by = 'Conductor'
+            ");
+            $stmtExpenses->execute([(int) $trip_id]);
+            $trip['total_conductor_expenses'] = (float) $stmtExpenses->fetchColumn();
+
+            $this->jsonResponse(['error' => false, 'trip' => $trip]);
+        } catch (PDOException $e) {
+            error_log("Error fetching trip financials: " . $e->getMessage());
+            $this->jsonResponse(['error' => true, 'message' => 'Error al consultar el viaje'], 500);
         }
     }
 }

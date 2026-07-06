@@ -5,6 +5,9 @@ require_once 'includes/functions.php';
 session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // CSRF Validation
+    validateCsrfToken();
+
     $id = $_POST['id'] ?? null;
     $vehicle_id = $_POST['vehicle_id'];
     $task_name = $_POST['task_name'];

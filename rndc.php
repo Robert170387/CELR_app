@@ -165,6 +165,7 @@ $msg = $_GET['msg'] ?? '';
                     <th class="px-4 py-3 text-left font-semibold text-gray-600">Ruta</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-600">Flete</th>
                     <th class="px-4 py-3 text-center font-semibold text-gray-600">Estado</th>
+                    <th class="px-4 py-3 text-center font-semibold text-gray-600">Doc.</th>
                     <th class="px-4 py-3 text-center font-semibold text-gray-600">Acciones</th>
                 </tr>
             </thead>
@@ -202,16 +203,43 @@ $msg = $_GET['msg'] ?? '';
                             <?php echo $estado_cfg[1]; ?>
                         </span>
                     </td>
-                    <td class="px-4 py-3 text-center space-x-2 whitespace-nowrap">
-                        <a href="rndc_details.php?id=<?php echo $m['id']; ?>"
-                           class="text-blue-600 hover:underline text-xs">Ver</a>
-                        <?php if ($m['estado'] !== 'Anulado'): ?>
-                        <a href="rndc_form.php?id=<?php echo $m['id']; ?>"
-                           class="text-yellow-600 hover:underline text-xs">Editar</a>
-                        <a href="rndc_delete.php?id=<?php echo $m['id']; ?>"
-                           onclick="return confirm('¿Anular este manifiesto?')"
-                           class="text-red-500 hover:underline text-xs">Anular</a>
+                    <td class="px-4 py-3 text-center">
+                        <?php if (!empty($m['manifest_file'])): ?>
+                            <a href="<?php echo htmlspecialchars($m['manifest_file']); ?>" target="_blank"
+                               class="text-blue-600 hover:text-blue-800" title="Ver archivo">
+                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                            </a>
+                        <?php else: ?>
+                            <span class="text-gray-300">—</span>
                         <?php endif; ?>
+                    </td>
+                    <td class="px-4 py-3 text-center whitespace-nowrap">
+                        <div class="flex items-center justify-center space-x-2">
+                            <a href="rndc_details.php?id=<?php echo $m['id']; ?>"
+                               class="text-blue-600 hover:text-blue-900" title="Ver Detalles">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </a>
+                            <?php if ($m['estado'] !== 'Anulado'): ?>
+                            <a href="rndc_form.php?id=<?php echo $m['id']; ?>"
+                               class="text-indigo-600 hover:text-indigo-900" title="Editar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </a>
+                            <a href="rndc_delete.php?id=<?php echo $m['id']; ?>"
+                               onclick="return confirm('¿Anular este manifiesto?')"
+                               class="text-red-600 hover:text-red-900" title="Anular">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </a>
+                            <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>

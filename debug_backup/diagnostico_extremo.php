@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/security_utils.php';
+requireInternalToolAccess();
+
 /**
  * Diagnóstico Extremo - Verificar qué está pasando realmente
  */

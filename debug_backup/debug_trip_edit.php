@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/security_utils.php';
+requireInternalToolAccess();
+
 /**
  * Script de diagnóstico para edición de viajes
  * Muestra exactamente qué datos están llegando al navegador

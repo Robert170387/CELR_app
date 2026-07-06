@@ -1,6 +1,12 @@
 <?php
 include 'includes/db.php';
-include 'includes/header.php';
+require_once 'includes/auth.php';
+
+// Protect page
+if (!isAuthenticated()) {
+    header("Location: login.php");
+    exit;
+}
 
 // Handle Delete (Soft Delete)
 if (isset($_GET['delete'])) {
@@ -13,23 +19,66 @@ if (isset($_GET['delete'])) {
 
 // Handle Form Submit (Add or Update)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = $_POST['name'];
+    $name = trim($_POST['name'] ?? '');
     $id = $_POST['id'] ?? null;
 
-    if ($id) {
-        // Update
-        $stmt = $pdo->prepare("UPDATE materials SET name = ? WHERE id = ?");
-        $stmt->execute([$name, $id]);
-    } else {
-        // Create
-        if ($name) {
-            $stmt = $pdo->prepare("INSERT INTO materials (name, active) VALUES (?, 1)");
-            $stmt->execute([$name]);
+    if ($name !== '') {
+        if ($id) {
+            // Update
+            $checkStmt = $pdo->prepare("SELECT * FROM materials WHERE name = ? AND id != ?");
+            $checkStmt->execute([$name, $id]);
+            $existing = $checkStmt->fetch();
+
+            if ($existing) {
+                header("Location: materials.php?edit=$id&error=duplicate");
+                exit;
+            } else {
+                try {
+                    $stmt = $pdo->prepare("UPDATE materials SET name = ? WHERE id = ?");
+                    $stmt->execute([$name, $id]);
+                } catch (PDOException $e) {
+                    if ($e->getCode() == 23000) {
+                        header("Location: materials.php?edit=$id&error=duplicate");
+                        exit;
+                    } else {
+                        throw $e;
+                    }
+                }
+            }
+        } else {
+            // Create
+            $checkStmt = $pdo->prepare("SELECT * FROM materials WHERE name = ?");
+            $checkStmt->execute([$name]);
+            $existing = $checkStmt->fetch();
+
+            if ($existing) {
+                if ($existing['active'] == 0) {
+                    $reactivateStmt = $pdo->prepare("UPDATE materials SET active = 1 WHERE id = ?");
+                    $reactivateStmt->execute([$existing['id']]);
+                } else {
+                    header("Location: materials.php?error=duplicate");
+                    exit;
+                }
+            } else {
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO materials (name, active) VALUES (?, 1)");
+                    $stmt->execute([$name]);
+                } catch (PDOException $e) {
+                    if ($e->getCode() == 23000) {
+                        header("Location: materials.php?error=duplicate");
+                        exit;
+                    } else {
+                        throw $e;
+                    }
+                }
+            }
         }
     }
     header("Location: materials.php");
     exit;
 }
+
+include 'includes/header.php';
 
 // Fetch Material to Edit if requested
 $editMaterial = null;
@@ -44,6 +93,13 @@ $materials = $pdo->query("SELECT * FROM materials WHERE active = 1 ORDER BY id D
 ?>
 
 <div class="max-w-4xl mx-auto py-6 px-4">
+    <?php if (isset($_GET['error']) && $_GET['error'] === 'duplicate'): ?>
+        <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Error:</strong>
+            <span class="block sm:inline">Ya existe un material con ese nombre.</span>
+        </div>
+    <?php endif; ?>
+
     <div class="md:grid md:grid-cols-3 md:gap-6">
         <div class="md:col-span-1">
             <h3 class="text-lg font-medium leading-6 text-gray-900">Gestión de Materiales</h3>

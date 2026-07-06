@@ -83,27 +83,21 @@ class ReportController extends Controller
 
         // Metric 3: Category Breakdown
         $stmtCat = $this->pdo->prepare("
-            SELECT category_name, category, SUM(count) as count, SUM(total) as total
-            FROM (
-                SELECT ec.name as category_name,
-                       e.category,
-                       COUNT(*) as count,
-                       SUM(e.amount) as total
-                FROM expenses e
-                LEFT JOIN expense_categories ec ON e.category = ec.slug
-                WHERE e.vehicle_id = ?
-                GROUP BY e.category
-                
-                UNION ALL
-                
-                SELECT 'Comisión (Conductor)' as category_name,
-                       'comision_viajes' as category,
-                       COUNT(*) as count,
-                       SUM(commission_value) as total
-                FROM trips
-                WHERE vehicle_id = ? AND commission_value > 0
-            ) as combined
-            GROUP BY category
+            SELECT COALESCE(ec.name, e.category_name) as category_name,
+                   COALESCE(ec.slug, e.category) as category,
+                   COUNT(*) as count,
+                   SUM(e.amount) as total
+            FROM expenses e
+            LEFT JOIN expense_categories ec ON e.category_id = ec.id
+            WHERE e.vehicle_id = ?
+            GROUP BY ec.id, e.category_name, e.category
+            UNION ALL
+            SELECT 'Comisión (Conductor)' as category_name,
+                   'comision_viajes' as category,
+                   COUNT(*) as count,
+                   SUM(commission_value) as total
+            FROM trips
+            WHERE vehicle_id = ? AND commission_value > 0
             ORDER BY total DESC
         ");
         $stmtCat->execute([$vehicleId, $vehicleId]);
@@ -111,9 +105,9 @@ class ReportController extends Controller
 
         // Metric 4: Recent Expenses
         $stmtRecent = $this->pdo->prepare("
-            SELECT e.*, ec.name as category_name
+            SELECT e.*, COALESCE(ec.name, e.category_name) as category_name
             FROM expenses e
-            LEFT JOIN expense_categories ec ON e.category = ec.slug
+            LEFT JOIN expense_categories ec ON e.category_id = ec.id
             WHERE e.vehicle_id = ?
             ORDER BY e.date DESC
             LIMIT 10
@@ -180,9 +174,10 @@ class ReportController extends Controller
         }
 
         // 2. Expenses
-        $sqlExp = "SELECT MONTH(e.date) as m, e.category, SUM(e.amount) as total 
+        $sqlExp = "SELECT MONTH(e.date) as m, COALESCE(ec.name, e.category_name, e.category) as category, SUM(e.amount) as total 
                    FROM expenses e 
                    LEFT JOIN trips t ON e.trip_id = t.id 
+                   LEFT JOIN expense_categories ec ON e.category_id = ec.id
                    WHERE YEAR(e.date) = ?";
         $paramsExp = [$year];
 
@@ -195,7 +190,7 @@ class ReportController extends Controller
             $sqlExp .= " AND t.driver_id = ?";
             $paramsExp[] = $driverId;
         }
-        $sqlExp .= " GROUP BY m, e.category";
+        $sqlExp .= " GROUP BY m, ec.id, e.category_name, e.category";
 
         $stmt = $this->pdo->prepare($sqlExp);
         $stmt->execute($paramsExp);
@@ -299,7 +294,7 @@ class ReportController extends Controller
                         FROM expenses e3
                         JOIN trips t4 ON e3.trip_id = t4.id
                         WHERE t4.origin = t.origin AND t4.destination = t.destination
-                        AND e3.category = 'combustible'
+                        AND e3.category_id IN (SELECT id FROM expense_categories WHERE slug = 'combustible' OR parent_id = (SELECT id FROM expense_categories WHERE slug = 'combustible'))
                         AND t4.date_load BETWEEN ? AND ?
                         $stateFilterSql3
                     ) as fuel_expenses

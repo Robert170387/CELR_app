@@ -4,18 +4,41 @@
  * Uses centralized Database class while maintaining backward compatibility
  */
 
+// Load .env file if it exists (local development)
+$envFile = __DIR__ . '/../.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        if (str_contains($line, '=')) {
+            [$key, $val] = explode('=', $line, 2);
+            $key = trim($key);
+            $val = trim($val, " \t\n\r\0\x0B\"'");
+            if (!getenv($key)) {
+                putenv("$key=$val");
+                $_ENV[$key] = $val;
+            }
+        }
+    }
+}
+
 // Include the new Database class
 require_once __DIR__ . '/../app/Core/Database.php';
+require_once __DIR__ . '/config_security.php';
 
 use App\Core\Database;
 
 // Configure database (in production, use environment variables)
 Database::setConfig([
     'host' => getenv('DB_HOST') ?: 'localhost',
+    'port' => getenv('DB_PORT') ?: '3306',
     'dbname' => getenv('DB_NAME') ?: 'celr_app',
     'username' => getenv('DB_USER') ?: 'root',
     'password' => getenv('DB_PASS') ?: '',
-    'charset' => 'utf8mb4'
+    'charset' => 'utf8mb4',
+    'ssl' => getenv('DB_SSL') ?: 'false',
+    'ssl_ca' => getenv('DB_SSL_CA') ?: '',
 ]);
 
 // Get PDO instance for backward compatibility

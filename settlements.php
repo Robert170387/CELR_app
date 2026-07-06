@@ -25,7 +25,7 @@ if ($date_to) {
 
 $sql = "SELECT s.*, p.firstname, p.lastname 
         FROM settlements s
-        JOIN personnel p ON s.personnel_id = p.id
+        LEFT JOIN personnel p ON s.driver_id = p.id
         $where
         ORDER BY s.created_at DESC";
 

@@ -52,6 +52,7 @@ if (!$task) {
                 cost: 0
             }">
                 <input type="hidden" name="schedule_id" value="<?php echo $schedule_id; ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
 
                 <div class="px-4 py-5 bg-white sm:p-6 space-y-5">
                     <div class="grid grid-cols-6 gap-6">

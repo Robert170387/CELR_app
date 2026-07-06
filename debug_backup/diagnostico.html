@@ -380,7 +380,7 @@
             setStatus('api-status', 'Probando...', 'warning');
 
             try {
-                const response = await fetch('api.php?action=fetchSatrackLocations');
+                const response = await fetch('api.php?action=getSystemAlerts');
                 log('api-log', `Respuesta recibida: ${response.status} ${response.statusText}`, 'info');
 
                 const data = await response.json();

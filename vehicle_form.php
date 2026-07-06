@@ -42,12 +42,6 @@ $partners = $pdo->query("SELECT id, firstname, lastname FROM personnel WHERE typ
                     class="mt-1 focus:ring-brand-500 focus:border-brand-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-50">
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700">ID SATRACK</label>
-                <input type="text" name="satrack_id" value="<?php echo $vehicle['satrack_id'] ?? ''; ?>"
-                    placeholder="ID Dispositivo"
-                    class="mt-1 focus:ring-brand-500 focus:border-brand-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-white font-bold text-brand-700">
-            </div>
-            <div class="sm:col-span-2">
                 <label class="block text-sm font-medium text-gray-700">Marca</label>
                 <input type="text" name="brand" value="<?php echo $vehicle['brand'] ?? ''; ?>" required
                     class="mt-1 focus:ring-brand-500 focus:border-brand-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-50">
@@ -226,8 +220,8 @@ $partners = $pdo->query("SELECT id, firstname, lastname FROM personnel WHERE typ
                         <select name="register_city" x-model="selectedCity" :disabled="!selectedState"
                             class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
                             <option value="">-- Seleccione --</option>
-                            <template x-for="ci in cities" :key="ci">
-                                <option :value="ci" x-text="ci"></option>
+                            <template x-for="ci in cities" :key="ci.id">
+                                <option :value="ci.name" x-text="ci.name"></option>
                             </template>
                         </select>
                     </div>

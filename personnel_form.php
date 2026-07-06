@@ -141,8 +141,8 @@ if (isset($_GET['id'])) {
                     <select name="city" x-model="selectedCity" :disabled="!selectedState"
                         class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
                         <option value="">-- Seleccione --</option>
-                        <template x-for="ci in cities" :key="ci">
-                            <option :value="ci" x-text="ci"></option>
+                        <template x-for="ci in cities" :key="ci.id">
+                            <option :value="ci.name" x-text="ci.name"></option>
                         </template>
                     </select>
                 </div>

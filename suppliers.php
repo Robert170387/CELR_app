@@ -51,7 +51,7 @@ $suppliers = $pdo->query($sql)->fetchAll();
                                             <?php echo htmlspecialchars($s['nit']); ?>
                                         </div>
                                         <div class="text-xs text-gray-500">
-                                            <?php echo $s['tax_regime']; ?>
+                                            <?php echo $s['tax_regime'] ?? ''; ?>
                                         </div>
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
@@ -70,8 +70,8 @@ $suppliers = $pdo->query($sql)->fetchAll();
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                        <?php echo htmlspecialchars($s['city']); ?>,
-                                        <?php echo htmlspecialchars($s['department']); ?>
+                                        <?php echo htmlspecialchars($s['city'] ?? ''); ?>,
+                                        <?php echo htmlspecialchars($s['department'] ?? ''); ?>
                                     </td>
                                     <td
                                         class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">

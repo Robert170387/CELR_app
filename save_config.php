@@ -2,6 +2,7 @@
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
+require_once 'includes/security_utils.php';
 require_once 'app/Core/Cache.php';
 
 use App\Core\Cache;
@@ -45,32 +46,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone = $_POST['phone'] ?? null;
     $email = $_POST['email'] ?? null;
 
-    // Satrack
-    $satrack_token = $_POST['satrack_token'] ?? null;
-    $satrack_api_key = $_POST['satrack_api_key'] ?? null;
-    $satrack_api_url = $_POST['satrack_api_url'] ?? 'https://api.satrack.com/v1/locations';
-
     // Handle Logo Upload
     $logo_path = null;
-    if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
-        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        $filename = $_FILES['logo']['name'];
-        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-
-        if (in_array($ext, $allowed)) {
-            $new_filename = 'logo_' . time() . '.' . $ext;
-            $upload_dir = 'uploads/logo/';
-
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-
-            $dest_path = $upload_dir . $new_filename;
-
-            if (move_uploaded_file($_FILES['logo']['tmp_name'], $dest_path)) {
-                $logo_path = $dest_path;
-            }
-        }
+    try {
+        $logo_path = safeUploadFile(
+            $_FILES['logo'] ?? ['error' => UPLOAD_ERR_NO_FILE],
+            'uploads/logo/',
+            [
+                'jpg' => ['image/jpeg'],
+                'jpeg' => ['image/jpeg'],
+                'png' => ['image/png'],
+                'gif' => ['image/gif'],
+                'webp' => ['image/webp'],
+            ],
+            'logo',
+            3145728
+        );
+    } catch (RuntimeException $e) {
+        $_SESSION['error'] = $e->getMessage();
+        header("Location: config.php?status=upload_error");
+        exit;
     }
 
     // Update Query
@@ -97,9 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 address = ?,
                 phone = ?,
                 email = ?,
-                satrack_token = ?,
-                satrack_api_key = ?,
-                satrack_api_url = ?,
                 unusual_expense_threshold = ?";
 
     $params = [
@@ -125,9 +117,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $address,
         $phone,
         $email,
-        $satrack_token,
-        $satrack_api_key,
-        $satrack_api_url,
         $unusual_expense_threshold
     ];
 

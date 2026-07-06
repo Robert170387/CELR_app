@@ -6,6 +6,7 @@ namespace App\Controllers;
 require_once __DIR__ . '/../Core/Controller.php';
 require_once __DIR__ . '/../Helpers/Audit.php';
 require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/functions.php';
 
 use App\Core\Controller;
 use App\Helpers\Audit;
@@ -69,9 +70,14 @@ class SettlementController extends Controller
      */
     public function updateTripStatus()
     {
+        $this->requireRole(['Admin', 'Staff']);
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect('trips.php');
         }
+
+        // CSRF Validation
+        validateCsrfToken();
 
         $trip_id = $_POST['trip_id'] ?? null;
         $action = $_POST['action'] ?? null;
@@ -82,7 +88,7 @@ class SettlementController extends Controller
         }
 
         try {
-            $new_status = ($action === 'settle') ? 'Settled' : 'Pending';
+            $new_status = ($action === 'settle') ? 'Complete' : 'Pending';
 
             $sql = "UPDATE trips SET settlement_status = ?, settlement_notes = ? WHERE id = ?";
             $stmt = $this->pdo->prepare($sql);
@@ -180,7 +186,7 @@ class SettlementController extends Controller
     {
         $stmt = $this->pdo->prepare("
             UPDATE trips 
-            SET settlement_status = 'Settled', 
+            SET settlement_status = 'Complete', 
                 settlement_notes = ? 
             WHERE driver_id = ? AND date_load BETWEEN ? AND ?
         ");

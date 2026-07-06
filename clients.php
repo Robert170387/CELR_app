@@ -2,11 +2,23 @@
 include 'includes/db.php';
 include 'includes/header.php';
 
+// Get total count for pagination
+$countStmt = $pdo->query("SELECT COUNT(*) FROM clients");
+$totalRows = (int)$countStmt->fetchColumn();
+
+// Pagination Configuration
+$limit = 15;
+$totalPages = ceil($totalRows / $limit);
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+if ($page > $totalPages && $totalPages > 0) $page = $totalPages;
+$offset = ($page - 1) * $limit;
+
 $clients = $pdo->query("SELECT * FROM clients ORDER BY 
     CASE 
         WHEN person_type = 'Jurídica' THEN business_name
         ELSE CONCAT(firstname, ' ', lastname1)
-    END ASC")->fetchAll();
+    END ASC LIMIT " . (int)$limit . " OFFSET " . (int)$offset)->fetchAll();
 ?>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -54,7 +66,7 @@ $clients = $pdo->query("SELECT * FROM clients ORDER BY
                                     </td>
                                 </tr>
                             <?php else: ?>
-                                <?php $counter = 1;
+                                <?php $counter = $offset + 1;
                                 foreach ($clients as $client): ?>
                                     <tr class="hover:bg-gray-50">
                                         <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-400 sm:pl-6">
@@ -136,6 +148,50 @@ $clients = $pdo->query("SELECT * FROM clients ORDER BY
                             <?php endif; ?>
                         </tbody>
                     </table>
+
+                    <!-- Pagination Controls -->
+                    <?php if ($totalPages > 1): ?>
+                        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <?php if ($page > 1): ?>
+                                    <a href="?page=<?php echo $page - 1; ?>" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Anterior</a>
+                                <?php endif; ?>
+                                <?php if ($page < $totalPages): ?>
+                                    <a href="?page=<?php echo $page + 1; ?>" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Siguiente</a>
+                                <?php endif; ?>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        Mostrando <span class="font-medium"><?php echo $offset + 1; ?></span> a <span class="font-medium"><?php echo min($offset + $limit, $totalRows); ?></span> de <span class="font-medium"><?php echo $totalRows; ?></span> registros
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                        <?php if ($page > 1): ?>
+                                            <a href="?page=<?php echo $page - 1; ?>" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                                <span class="sr-only">Anterior</span>
+                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                            </a>
+                                        <?php endif; ?>
+
+                                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                                            <a href="?page=<?php echo $i; ?>" class="relative inline-flex items-center px-4 py-2 border text-sm font-medium <?php echo $i === $page ? 'z-10 bg-brand-50 border-brand-500 text-brand-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'; ?>">
+                                                <?php echo $i; ?>
+                                            </a>
+                                        <?php endfor; ?>
+
+                                        <?php if ($page < $totalPages): ?>
+                                            <a href="?page=<?php echo $page + 1; ?>" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                                <span class="sr-only">Siguiente</span>
+                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                            </a>
+                                        <?php endif; ?>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

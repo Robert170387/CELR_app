@@ -77,13 +77,13 @@ function buildData(PDO $pdo, string $modulo): array {
             $params = [];
             $where  = "WHERE 1=1";
             if (!empty($_GET['vehicle_id'])) { $where .= " AND e.vehicle_id = ?"; $params[] = (int)$_GET['vehicle_id']; }
-            if (!empty($_GET['category']))   { $where .= " AND e.category = ?";   $params[] = $_GET['category']; }
+            if (!empty($_GET['category']))   { $where .= " AND e.category_id = (SELECT id FROM expense_categories WHERE slug = ?)"; $params[] = $_GET['category']; }
             if (!empty($_GET['fecha_desde'])){ $where .= " AND e.expense_date >= ?"; $params[] = $_GET['fecha_desde']; }
             if (!empty($_GET['fecha_hasta'])) { $where .= " AND e.expense_date <= ?"; $params[] = $_GET['fecha_hasta']; }
 
             $sql = "SELECT e.id, e.expense_date, v.placa,
                            CONCAT(p.firstname,' ',IFNULL(p.lastname,'')) AS conductor,
-                           e.category, e.description,
+                           e.category_name AS category, e.description,
                            e.amount, e.payment_method, e.supplier_name,
                            e.trip_id, e.notes
                     FROM expenses e

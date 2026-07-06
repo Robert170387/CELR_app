@@ -18,10 +18,25 @@ if (!$cat) {
     die("Categoría no encontrada.");
 }
 
-// Stats
-$stmtCount = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE category = ?");
-$stmtCount->execute([$cat['slug']]);
-$usage_count = $stmtCount->fetchColumn();
+// Stats & Parent
+$parent_name = null;
+if ($cat['parent_id']) {
+    $stmtParent = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ?");
+    $stmtParent->execute([$cat['parent_id']]);
+    $parent_name = $stmtParent->fetchColumn();
+}
+
+if (empty($cat['parent_id'])) {
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM expense_categories WHERE parent_id = ?");
+    $stmtCount->execute([$cat['id']]);
+    $usage_count = $stmtCount->fetchColumn();
+    $usage_label = "Subcategorías";
+} else {
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE category_id = ?");
+    $stmtCount->execute([$cat['id']]);
+    $usage_count = $stmtCount->fetchColumn();
+    $usage_label = "Uso en Gastos";
+}
 ?>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -71,10 +86,24 @@ $usage_count = $stmtCount->fetchColumn();
                         <?php endif; ?>
                     </dd>
                 </div>
-                <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt class="text-sm font-medium text-gray-500">Uso en Gastos</dt>
+                <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">Jerarquía</dt>
                     <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                        Usada en <?php echo $usage_count; ?> registros.
+                        <?php if ($parent_name): ?>
+                            Subcategoría de: <strong><?php echo htmlspecialchars($parent_name); ?></strong>
+                        <?php else: ?>
+                            Categoría Principal
+                        <?php endif; ?>
+                    </dd>
+                </div>
+                <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500"><?php echo $usage_label; ?></dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        <?php if (empty($cat['parent_id'])): ?>
+                            Contiene <?php echo $usage_count; ?> subcategorías.
+                        <?php else: ?>
+                            Usada en <?php echo $usage_count; ?> registros de gastos.
+                        <?php endif; ?>
                         <?php if ($usage_count > 0): ?>
                             <span class="text-xs text-red-500 ml-2">(No se puede eliminar)</span>
                         <?php endif; ?>

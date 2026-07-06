@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/security_utils.php';
+requireInternalToolAccess();
+
 /**
  * Diagnóstico de Carga de Formulario de Edición
  * Muestra exactamente qué está pasando cuando se carga el formulario

@@ -98,10 +98,10 @@ if (!function_exists('calculateTripFinancials')) {
         $config = $stmtConfig->fetch();
 
         // 3. Fetch Expenses for this trip (only conductor-paid expenses affect financials)
-        $stmtExpenses = $pdo->prepare("SELECT SUM(amount) as total_expenses FROM expenses WHERE trip_id = ? AND paid_by = 'Conductor'");
+        // OPTIMIZED: Use JOIN instead of correlated subquery
+        $stmtExpenses = $pdo->prepare("SELECT COALESCE(SUM(e.amount), 0) as total_expenses FROM expenses e WHERE e.trip_id = ? AND e.paid_by = 'Conductor'");
         $stmtExpenses->execute([$tripId]);
-        $expensesResult = $stmtExpenses->fetch();
-        $totalTripExpenses = $expensesResult['total_expenses'] ?? 0;
+        $totalTripExpenses = $stmtExpenses->fetchColumn() ?: 0;
 
         // --- Calculations ---
 
@@ -158,8 +158,6 @@ if (!function_exists('calculateTripFinancials')) {
         $updateSql = "UPDATE trips SET 
                         kms_total = ?, 
                         total_deductibles = ?, 
-                        value_iva = ?,
-                        value_rete_iva = ?,
                         value_rete_fuente = ?,
                         value_rete_ica = ?,
                         value_deductible_3 = ?,
@@ -173,8 +171,6 @@ if (!function_exists('calculateTripFinancials')) {
         $updateStmt->execute([
             $kms_total,
             $total_deductibles,
-            $value_iva,
-            $value_rete_iva,
             $value_rf,
             $value_ica,
             $value_d3,
@@ -245,7 +241,73 @@ if (!function_exists('calculateDriverTotalPendingBalance')) {
 
         $totalBalance = 0;
         foreach ($trips as $t) {
-            $totalBalance += calculateTripBalance($t['id']);
+            $tripBalance = calculateTripBalance($t['id']);
+            $totalBalance += $tripBalance;
+        }
+
+        return $totalBalance;
+    }
+}
+
+/**
+ * Calculate the remaining balance for a driver (Advance - Expenses)
+ */
+if (!function_exists('calculateTripBalance')) {
+    function calculateTripBalance($tripId)
+    {
+        global $pdo;
+        // OPTIMIZED: Use JOIN instead of correlated subquery
+        $stmt = $pdo->prepare("SELECT 
+            COALESCE(t.advance_owner, 0) as advance_owner,
+            COALESCE(t.advance_manifest, 0) as advance_manifest,
+            COALESCE(t.advance_manifest_to_driver, 0) as advance_manifest_to_driver,
+            COALESCE(SUM(e.amount), 0) as conductor_expenses
+        FROM trips t
+        LEFT JOIN expenses e ON t.id = e.trip_id AND e.paid_by = 'Conductor'
+        WHERE t.id = ?
+        GROUP BY t.id");
+        $stmt->execute([$tripId]);
+        $result = $stmt->fetch();
+
+        $advance = $result['advance_owner'];
+        if ($result['advance_manifest_to_driver']) {
+            $advance += $result['advance_manifest'];
+        }
+
+        $expenses = $result['conductor_expenses'];
+
+        return $advance - $expenses;
+    }
+}
+
+/**
+ * Calculate the total accumulated balance for a driver across all PENDING trips.
+ */
+if (!function_exists('calculateDriverTotalPendingBalance')) {
+    function calculateDriverTotalPendingBalance($driverId)
+    {
+        global $pdo;
+        // OPTIMIZED: Single query instead of N+1 queries
+        $stmt = $pdo->prepare("SELECT 
+            t.id,
+            COALESCE(t.advance_owner, 0) as advance_owner,
+            COALESCE(t.advance_manifest, 0) as advance_manifest,
+            COALESCE(t.advance_manifest_to_driver, 0) as advance_manifest_to_driver,
+            COALESCE(SUM(e.amount), 0) as conductor_expenses
+        FROM trips t
+        LEFT JOIN expenses e ON t.id = e.trip_id AND e.paid_by = 'Conductor'
+        WHERE t.driver_id = ? AND t.settlement_status = 'Pending'
+        GROUP BY t.id");
+        $stmt->execute([$driverId]);
+        $trips = $stmt->fetchAll();
+
+        $totalBalance = 0;
+        foreach ($trips as $t) {
+            $advance = $t['advance_owner'];
+            if ($t['advance_manifest_to_driver']) {
+                $advance += $t['advance_manifest'];
+            }
+            $totalBalance += $advance - $t['conductor_expenses'];
         }
 
         return $totalBalance;
@@ -262,7 +324,7 @@ if (!function_exists('isTripSettled')) {
         $stmt = $pdo->prepare("SELECT settlement_status FROM trips WHERE id = ?");
         $stmt->execute([$tripId]);
         $status = $stmt->fetchColumn();
-        return $status === 'Settled';
+        return $status === 'Complete';
     }
 }
 
@@ -328,7 +390,8 @@ if (!function_exists('getUpcomingAlerts')) {
         $warning_date = date('Y-m-d', strtotime("+$days_threshold days"));
 
         // 1. Vehicles: SOAT
-        $stmt = $pdo->query("SELECT id, placa, expiry_soat FROM vehicles WHERE active=1 AND expiry_soat IS NOT NULL AND expiry_soat <= '$warning_date' ORDER BY expiry_soat ASC");
+        $stmt = $pdo->prepare("SELECT id, placa, expiry_soat FROM vehicles WHERE active=1 AND expiry_soat IS NOT NULL AND expiry_soat <= ? ORDER BY expiry_soat ASC");
+        $stmt->execute([$warning_date]);
         while ($row = $stmt->fetch()) {
             $days = (strtotime($row['expiry_soat']) - strtotime($today)) / (60 * 60 * 24);
             $alerts[] = [
@@ -342,7 +405,8 @@ if (!function_exists('getUpcomingAlerts')) {
         }
 
         // 2. Vehicles: Tecnomecánica
-        $stmt = $pdo->query("SELECT id, placa, expiry_tecno FROM vehicles WHERE active=1 AND expiry_tecno IS NOT NULL AND expiry_tecno <= '$warning_date' ORDER BY expiry_tecno ASC");
+        $stmt = $pdo->prepare("SELECT id, placa, expiry_tecno FROM vehicles WHERE active=1 AND expiry_tecno IS NOT NULL AND expiry_tecno <= ? ORDER BY expiry_tecno ASC");
+        $stmt->execute([$warning_date]);
         while ($row = $stmt->fetch()) {
             $days = (strtotime($row['expiry_tecno']) - strtotime($today)) / (60 * 60 * 24);
             $alerts[] = [
@@ -356,7 +420,8 @@ if (!function_exists('getUpcomingAlerts')) {
         }
 
         // 3. Vehicles: Policies
-        $stmt = $pdo->query("SELECT id, placa, expiry_policy FROM vehicles WHERE active=1 AND expiry_policy IS NOT NULL AND expiry_policy <= '$warning_date' ORDER BY expiry_policy ASC");
+        $stmt = $pdo->prepare("SELECT id, placa, expiry_policy FROM vehicles WHERE active=1 AND expiry_policy IS NOT NULL AND expiry_policy <= ? ORDER BY expiry_policy ASC");
+        $stmt->execute([$warning_date]);
         while ($row = $stmt->fetch()) {
             $days = (strtotime($row['expiry_policy']) - strtotime($today)) / (60 * 60 * 24);
             $alerts[] = [
@@ -370,7 +435,8 @@ if (!function_exists('getUpcomingAlerts')) {
         }
 
         // 4. Personnel: License
-        $stmt = $pdo->query("SELECT id, firstname, lastname, license_expiry FROM personnel WHERE active=1 AND license_expiry IS NOT NULL AND license_expiry <= '$warning_date' ORDER BY license_expiry ASC");
+        $stmt = $pdo->prepare("SELECT id, firstname, lastname, license_expiry FROM personnel WHERE active=1 AND license_expiry IS NOT NULL AND license_expiry <= ? ORDER BY license_expiry ASC");
+        $stmt->execute([$warning_date]);
         while ($row = $stmt->fetch()) {
             $days = (strtotime($row['license_expiry']) - strtotime($today)) / (60 * 60 * 24);
             $alerts[] = [
@@ -403,12 +469,15 @@ if (!function_exists('getOverdueCollectionAlerts')) {
         $today = new DateTime();
         $twoMonthsAgo = (clone $today)->modify('-2 months');
 
+        // OPTIMIZED: Use JOIN instead of correlated subquery
         $sql = "
             SELECT t.id, t.date_load, t.final_pay_expected,
-                   (SELECT IFNULL(SUM(amount), 0) FROM trip_payments WHERE trip_id = t.id) as paid_amount
+                   COALESCE(SUM(tp.amount), 0) as paid_amount
             FROM trips t
+            LEFT JOIN trip_payments tp ON t.id = tp.trip_id
             WHERE t.final_pay_expected > 0
             AND t.date_load <= ?
+            GROUP BY t.id, t.date_load, t.final_pay_expected
         ";
 
         $stmt = $pdo->prepare($sql);
@@ -602,6 +671,19 @@ if (!function_exists('getSystemHealthMetrics')) {
         }
 
         return $metrics;
+    }
+}
+
+if (!function_exists('setFlashMessage')) {
+    function setFlashMessage($type, $title, $text) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['flash_message'] = [
+            'type' => $type,
+            'title' => $title,
+            'text' => $text
+        ];
     }
 }
 ?>

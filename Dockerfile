@@ -12,7 +12,8 @@ COPY . /var/www/html
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-RUN chown -R www-data:www-data /var/www/html \
+RUN mkdir -p /var/www/html/logs /var/www/html/cache \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/uploads /var/www/html/logs /var/www/html/cache
 
 EXPOSE 80

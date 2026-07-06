@@ -1,0 +1,13 @@
+.env
+.git/
+.gitignore
+.gitattributes
+node_modules/
+.vscode/
+.idea/
+/Dockerfile
+/render.yaml
+/logs/
+/cache/
+/backups/
+/debug_backup/

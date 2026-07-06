@@ -5,7 +5,6 @@ services:
     repo: https://github.com/Robert170387/CELR_app.git
     region: ohio
     plan: free
-    dockerfilePath: ./Dockerfile
     envVars:
       - key: APP_ENV
         value: production
@@ -29,4 +28,3 @@ services:
         value: "3600"
       - key: SESSION_SECURE
         value: "true"
-    healthCheckPath: /login.php

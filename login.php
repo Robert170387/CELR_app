@@ -153,8 +153,8 @@ input:focus{border-color:#3b82f6;background:rgba(59,130,246,0.12);box-shadow:0 0
                 <input type="text" id="username" name="username" placeholder="Ingrese su usuario" required autofocus>
                 <label for="password">Contrasena</label>
                 <div style="position:relative;">
-                    <input type="password" id="password" name="password" placeholder="············" required style="padding-right:3rem;">
-                    <button type="button" onclick="const i=document.getElementById('password');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁️':'🙈';" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-60%);background:none;border:none;cursor:pointer;font-size:1.1rem;color:rgba(255,255,255,0.6);">👁️</button>
+                    <input type="password" id="password" name="password" placeholder="Â·Â·Â·Â·Â·Â·Â·Â·Â·Â·Â·Â·" required style="padding-right:3rem;">
+                    <button type="button" onclick="const i=document.getElementById('password');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'ðŸ‘ï¸':'ðŸ™ˆ';" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-60%);background:none;border:none;cursor:pointer;font-size:1.1rem;color:rgba(255,255,255,0.6);">ðŸ‘ï¸</button>
                 </div>
                 <button type="submit" class="btn-login">Entrar al Sistema</button>
             </form>

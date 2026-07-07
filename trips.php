@@ -1,3 +1,4 @@
+﻿<?php ini_set('display_errors', 1); error_reporting(E_ALL); ?>
                         <?php
 include 'includes/db.php';
 include 'includes/functions.php';
@@ -67,7 +68,7 @@ $offset = ($page - 1) * $limit;
 $sql = "SELECT t.*, v.placa, CONCAT(d.firstname, ' ', IFNULL(d.lastname, '')) as driver_name,
                m.name as material_name,
                CASE 
-                   WHEN c.person_type = 'Jurídica' THEN c.business_name
+                   WHEN c.person_type = 'JurÃ­dica' THEN c.business_name
                    ELSE CONCAT(c.firstname, ' ', c.lastname1)
                END as client_name,
                IFNULL(ex.total_trip_expenses, 0) as total_trip_expenses,
@@ -100,8 +101,8 @@ $activeTripsCount = (int)$pdo->query("SELECT COUNT(*) FROM trips WHERE status = 
         </svg>
         <div class="flex-1">
             <p class="text-sm font-medium text-amber-800">
-                ⚠️ Hay <strong><?php echo $activeTripsCount; ?> viaje(s) en progreso</strong> sin finalizar.
-                Asegúrese de que el vehículo y conductor no tengan un viaje activo antes de crear uno nuevo.
+                âš ï¸ Hay <strong><?php echo $activeTripsCount; ?> viaje(s) en progreso</strong> sin finalizar.
+                AsegÃºrese de que el vehÃ­culo y conductor no tengan un viaje activo antes de crear uno nuevo.
             </p>
         </div>
     </div>
@@ -111,7 +112,7 @@ $activeTripsCount = (int)$pdo->query("SELECT COUNT(*) FROM trips WHERE status = 
     <div class="sm:flex sm:items-center">
         <div class="sm:flex-auto">
             <h1 class="text-xl font-semibold text-gray-900">Registro de Viajes</h1>
-            <p class="mt-2 text-sm text-gray-700">Historial completo de operaciones logísticas.</p>
+            <p class="mt-2 text-sm text-gray-700">Historial completo de operaciones logÃ­sticas.</p>
         </div>
         <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex space-x-3">
             <a href="trips_export.php"
@@ -138,7 +139,7 @@ $activeTripsCount = (int)$pdo->query("SELECT COUNT(*) FROM trips WHERE status = 
             @click="expanded = !expanded">
             <h3 class="text-sm font-bold text-gray-700 flex items-center">
                 <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                Filtros de Búsqueda
+                Filtros de BÃºsqueda
             </h3>
             <span class="text-xs text-brand-600 font-semibold hover:underline" x-text="expanded ? 'Ocultar filtros' : 'Mostrar filtros'"></span>
         </div>
@@ -166,7 +167,7 @@ $activeTripsCount = (int)$pdo->query("SELECT COUNT(*) FROM trips WHERE status = 
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Vehículo</label>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">VehÃ­culo</label>
                     <select name="vehicle_id"
                         class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-xs">
                         <option value="">Todos</option>
@@ -192,7 +193,7 @@ $activeTripsCount = (int)$pdo->query("SELECT COUNT(*) FROM trips WHERE status = 
                         <option value="">Todos</option>
                         <?php foreach ($clients as $c): ?>
                             <?php
-                                $cName = $c['person_type'] === 'Jurídica' ? $c['business_name'] : ($c['firstname'] . ' ' . $c['lastname1']);
+                                $cName = $c['person_type'] === 'JurÃ­dica' ? $c['business_name'] : ($c['firstname'] . ' ' . $c['lastname1']);
                             ?>
                             <option value="<?php echo $c['id']; ?>" <?php echo ($_GET['client_id'] ?? '') == $c['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($cName); ?></option>
                         <?php endforeach; ?>
@@ -217,12 +218,12 @@ $activeTripsCount = (int)$pdo->query("SELECT COUNT(*) FROM trips WHERE status = 
                             <tr>
                                 <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">ID / ODT</th>
                                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Carga y Cliente</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Ruta Logística</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Vehículo / Conductor</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Ruta LogÃ­stica</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">VehÃ­culo / Conductor</th>
                                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Estado</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Análisis / KPI</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">AnÃ¡lisis / KPI</th>
                                 <th scope="col" class="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Valores</th>
-                                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6"><span class="sr-only">Gestión</span></th>
+                                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6"><span class="sr-only">GestiÃ³n</span></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 bg-white">
@@ -291,7 +292,7 @@ $activeTripsCount = (int)$pdo->query("SELECT COUNT(*) FROM trips WHERE status = 
                                             <div class="flex flex-col space-y-1">
                                                 <div class="flex items-center text-[10px] uppercase font-bold text-slate-400">
                                                     <span class="w-16">Tiempo:</span>
-                                                    <span class="text-slate-700"><?php echo $days ?: '-'; ?> días</span>
+                                                    <span class="text-slate-700"><?php echo $days ?: '-'; ?> dÃ­as</span>
                                                 </div>
                                                 <div class="flex items-center text-[10px] uppercase font-bold text-slate-400">
                                                     <span class="w-16">KPL/G:</span>
@@ -317,7 +318,7 @@ $activeTripsCount = (int)$pdo->query("SELECT COUNT(*) FROM trips WHERE status = 
                                                 <a href="trip_create.php?edit=<?php echo $trip['id']; ?>" class="text-indigo-600 hover:text-indigo-900" title="Editar">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                                 </a>
-                                                <a href="trip_delete.php?id=<?php echo $trip['id']; ?>" onclick="return confirm('¿Confirmar eliminación permanente?');" class="text-red-600 hover:text-red-900" title="Eliminar">
+                                                <a href="trip_delete.php?id=<?php echo $trip['id']; ?>" onclick="return confirm('Â¿Confirmar eliminaciÃ³n permanente?');" class="text-red-600 hover:text-red-900" title="Eliminar">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                 </a>
                                             </div>
@@ -421,7 +422,7 @@ document.addEventListener('change', function (e) {
         }
     })
     .catch(() => {
-        alert('Error de conexión al actualizar el estado');
+        alert('Error de conexiÃ³n al actualizar el estado');
         select.value = badge.textContent;
     })
     .finally(() => {
@@ -448,10 +449,11 @@ document.addEventListener('blur', function (e) {
 // Confirm before creating a new trip if there are active trips
 <?php if ($activeTripsCount > 0): ?>
 document.getElementById('btn-nuevo-viaje')?.addEventListener('click', function (e) {
-    if (!confirm('⚠️ Hay <?php echo $activeTripsCount; ?> viaje(s) en progreso sin finalizar.\n\n¿Desea continuar creando un nuevo viaje?')) {
+    if (!confirm('âš ï¸ Hay <?php echo $activeTripsCount; ?> viaje(s) en progreso sin finalizar.\n\nÂ¿Desea continuar creando un nuevo viaje?')) {
         e.preventDefault();
     }
 });
 <?php endif; ?>
 </script>
 <?php include 'includes/footer.php'; ?>
+

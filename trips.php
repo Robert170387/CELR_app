@@ -17,7 +17,7 @@ if ($statusF)  { $where[] = "t.status = :st";  $params[':st'] = $statusF; }
 $sql = "SELECT t.id, t.date_load, t.origin, t.destination, t.flete_bruto, t.flete_neto,
                t.status, t.manifest_number,
                v.placa AS vehicle_placa,
-               CONCAT(p.first_name,' ',p.last_name) AS driver_name
+               p.full_name AS driver_name
         FROM trips t
         LEFT JOIN vehicles v ON v.id = t.vehicle_id
         LEFT JOIN personnel p ON p.id = t.driver_id
@@ -56,7 +56,7 @@ $total_flete = array_sum(array_column($trips, 'flete_bruto'));
 Dashboard</a>
 <div x-data="{open:true}" class="mb-1">
 <button @click="open=!open" class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-xl text-white bg-slate-900 border border-slate-800">
-<span class="flex items-center"><svg class="w-5 h-5 mr-3 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/></svg>Gestión Operativa</span>
+<span class="flex items-center"><svg class="w-5 h-5 mr-3 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/></svg>GestiÃ³n Operativa</span>
 <svg class="w-4 h-4 transition-transform" :class="{'rotate-90':open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
 </button>
 <div x-show="open" class="mt-1 space-y-1 bg-slate-900/50 rounded-xl p-1 border border-slate-800/30">
@@ -73,7 +73,7 @@ Dashboard</a>
 Mantenimiento</a>
 <a href="financial_report.php" class="flex items-center px-4 py-2.5 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-900 rounded-xl mb-1">
 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-Analítica</a>
+AnalÃ­tica</a>
 </nav></div>
 <div class="flex-1 flex flex-col overflow-hidden">
 <header class="flex justify-between items-center py-4 px-8 bg-white/80 backdrop-blur-md border-b border-slate-200 z-10">
@@ -91,7 +91,7 @@ Analítica</a>
 <div class="rounded-2xl bg-white shadow-xl ring-1 ring-slate-900/5 overflow-hidden py-2">
 <a href="logout.php" class="flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
 <svg class="mr-3 h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-Cerrar Sesión</a>
+Cerrar SesiÃ³n</a>
 </div></div></div>
 </header>
 <main class="flex-1 overflow-x-hidden overflow-y-auto p-8">
@@ -127,7 +127,7 @@ Cerrar Sesión</a>
 <input type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>" class="block w-full border-gray-300 rounded-md shadow-sm text-xs"></div>
 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Hasta</label>
 <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>" class="block w-full border-gray-300 rounded-md shadow-sm text-xs"></div>
-<div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Vehículo</label>
+<div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">VehÃ­culo</label>
 <select name="vehicle_id" class="block w-full border-gray-300 rounded-md shadow-sm text-xs">
 <option value="">Todos</option>
 <?php foreach($vehicles as $v): ?>
@@ -151,7 +151,7 @@ Cerrar Sesión</a>
 <thead class="bg-gray-50">
 <tr>
 <th class="py-3.5 pl-4 pr-3 text-left text-xs font-semibold text-gray-900 sm:pl-6">Fecha Cargue</th>
-<th class="px-3 py-3.5 text-left text-xs font-semibold text-gray-900">Vehículo</th>
+<th class="px-3 py-3.5 text-left text-xs font-semibold text-gray-900">VehÃ­culo</th>
 <th class="px-3 py-3.5 text-left text-xs font-semibold text-gray-900">Conductor</th>
 <th class="px-3 py-3.5 text-left text-xs font-semibold text-gray-900">Origen / Destino</th>
 <th class="px-3 py-3.5 text-left text-xs font-semibold text-gray-900">Manifiesto</th>
@@ -171,15 +171,15 @@ $st = $t['status'] ?? '';
 ?>
 <tr class="hover:bg-gray-50">
 <td class="whitespace-nowrap py-4 pl-4 pr-3 text-xs font-mono text-gray-400 sm:pl-6">
-<?= $t['date_load'] ? date('d M Y', strtotime($t['date_load'])) : '—' ?>
+<?= $t['date_load'] ? date('d M Y', strtotime($t['date_load'])) : 'â€”' ?>
 </td>
-<td class="whitespace-nowrap px-3 py-4 text-sm font-bold text-gray-900 uppercase"><?= htmlspecialchars($t['vehicle_placa'] ?? '—') ?></td>
-<td class="whitespace-nowrap px-3 py-4 text-sm text-gray-700"><?= htmlspecialchars($t['driver_name'] ?? '—') ?></td>
+<td class="whitespace-nowrap px-3 py-4 text-sm font-bold text-gray-900 uppercase"><?= htmlspecialchars($t['vehicle_placa'] ?? 'â€”') ?></td>
+<td class="whitespace-nowrap px-3 py-4 text-sm text-gray-700"><?= htmlspecialchars($t['driver_name'] ?? 'â€”') ?></td>
 <td class="px-3 py-4 text-sm">
-<p class="font-semibold text-gray-700"><?= htmlspecialchars($t['origin'] ?? '—') ?></p>
-<p class="text-xs text-gray-400">→ <?= htmlspecialchars($t['destination'] ?? '') ?></p>
+<p class="font-semibold text-gray-700"><?= htmlspecialchars($t['origin'] ?? 'â€”') ?></p>
+<p class="text-xs text-gray-400">â†’ <?= htmlspecialchars($t['destination'] ?? '') ?></p>
 </td>
-<td class="whitespace-nowrap px-3 py-4 text-xs text-gray-500"><?= htmlspecialchars($t['manifest_number'] ?? '—') ?></td>
+<td class="whitespace-nowrap px-3 py-4 text-xs text-gray-500"><?= htmlspecialchars($t['manifest_number'] ?? 'â€”') ?></td>
 <td class="whitespace-nowrap px-3 py-4 text-sm text-right font-bold text-green-700">
 $ <?= number_format($t['flete_bruto'] ?? 0, 2, ',', '.') ?>
 </td>
